@@ -1,6 +1,7 @@
-import express, { type NextFunction, type Request, type Response } from 'express';
+import express from 'express';
 import cors from 'cors';
-import { sendError, sendSuccess } from './utils/apiResponse';
+import { sendSuccess } from './utils/apiResponse';
+import { errorHandler, notFoundHandler } from './middlewares/errorHandler';
 
 export const app = express();
 
@@ -11,14 +12,7 @@ app.get('/api/health', (_req, res) => {
   sendSuccess(res, { status: 'up' }, 'Server đang hoạt động');
 });
 
-// TODO (chặng sau): app.use('/api/boards', boardRoutes) ...
+// TODO (Ticket 1+): app.use('/api/boards', boardRoutes) ...
 
-app.use((req, res) => {
-  sendError(res, `Không tìm thấy route ${req.method} ${req.originalUrl}`, 404);
-});
-
-app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  console.error(err);
-  const message = err instanceof Error ? err.message : 'Lỗi máy chủ nội bộ';
-  sendError(res, message, 500);
-});
+app.use(notFoundHandler);
+app.use(errorHandler);
