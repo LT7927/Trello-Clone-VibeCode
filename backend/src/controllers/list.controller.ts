@@ -17,8 +17,8 @@ import {
   optionalBoolean,
   optionalString,
   optionalUuid,
+  rejectFields,
   requiredString,
-  type Body,
 } from '../utils/validators';
 
 const TITLE_MAX = 255;
@@ -37,17 +37,6 @@ async function findListOrThrow(
   const list = await List.findByPk(id, options);
   if (!list) throw AppError.notFound('Không tìm thấy list');
   return list;
-}
-
-function rejectForbiddenFields(body: Body): void {
-  for (const field of FORBIDDEN_PATCH_FIELDS) {
-    if (field in body) {
-      throw AppError.badRequest(`Không được phép cập nhật trường "${field}" qua API này`, {
-        field,
-        allowedFields: UPDATABLE_FIELDS,
-      });
-    }
-  }
 }
 
 /**
@@ -102,7 +91,7 @@ export const createList = asyncHandler<BoardIdParams>(async (req, res) => {
  */
 export const updateList = asyncHandler<IdParams>(async (req, res) => {
   const body = ensureBody(req.body);
-  rejectForbiddenFields(body);
+  rejectFields(body, FORBIDDEN_PATCH_FIELDS, UPDATABLE_FIELDS);
 
   const updates: ListUpdates = {};
   const title = optionalString(body, 'title', TITLE_MAX);

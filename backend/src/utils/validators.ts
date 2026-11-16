@@ -66,6 +66,22 @@ export function optionalString(
   return trimmed;
 }
 
+/** Ném 400 nếu body chứa bất kỳ trường bị cấm nào (vd: position, listId khi PATCH) */
+export function rejectFields(
+  body: Body,
+  forbidden: readonly string[],
+  allowedFields: readonly string[],
+): void {
+  for (const field of forbidden) {
+    if (field in body) {
+      throw AppError.badRequest(`Không được phép cập nhật trường "${field}" qua API này`, {
+        field,
+        allowedFields,
+      });
+    }
+  }
+}
+
 export function optionalBoolean(body: Body, field: string): boolean | undefined {
   const value = body[field];
   if (value === undefined) return undefined;

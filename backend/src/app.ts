@@ -4,6 +4,7 @@ import { sendSuccess } from './utils/apiResponse';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler';
 import { boardRoutes } from './routes/board.routes';
 import { boardListRoutes, listRoutes } from './routes/list.routes';
+import { cardRoutes, listCardRoutes } from './routes/card.routes';
 
 export const app = express();
 
@@ -16,7 +17,9 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/boards/:boardId/lists', boardListRoutes);
 app.use('/api/boards', boardRoutes);
+app.use('/api/lists/:listId/cards', listCardRoutes);
 app.use('/api/lists', listRoutes);
+app.use('/api/cards', cardRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -16,7 +16,9 @@ export const ACTIVITY_ACTIONS = [
   'CARD_CREATED',
   'CARD_UPDATED',
   'CARD_COMPLETED',
+  'CARD_UNCOMPLETED',
   'CARD_ARCHIVED',
+  'CARD_RESTORED',
   'CARD_DELETED',
   // Chỉ ghi khi card chuyển sang list KHÁC (kéo trong cùng list không ghi log)
   'CARD_MOVED',
