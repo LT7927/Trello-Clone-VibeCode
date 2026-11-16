@@ -4,9 +4,16 @@ import { logActivity } from '../services/activity.service';
 import { AppError } from '../utils/AppError';
 import { sendSuccess } from '../utils/apiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
-import { POSITION_GAP } from '../utils/position';
+import { rebalanceLists } from '../services/position.service';
+import {
+  POSITION_GAP,
+  calcPosition,
+  needsRebalance,
+  type PositionUpdate,
+} from '../utils/position';
 import {
   ensureBody,
+  nullableUuid,
   optionalBoolean,
   optionalString,
   optionalUuid,
@@ -149,6 +156,151 @@ export const updateList = asyncHandler<IdParams>(async (req, res) => {
   });
 
   sendSuccess(res, list, 'Cập nhật list thành công');
+});
+
+/**
+ * PATCH /api/lists/:id/move  body: { prevListId: string | null, nextListId: string | null }
+ *
+ * prev / next là 2 list ĐANG HOẠT ĐỘNG liền kề tại vị trí thả (theo góc nhìn của client,
+ * không tính list đang kéo). null = thả ở đầu / cuối board.
+ *
+ * Luồng (1 transaction):
+ *  1. Đọc list để lấy boardId.
+ *  2. Khoá toàn bộ list của board (FOR UPDATE, sắp theo id để thứ tự khoá cố định -> tránh deadlock).
+ *  3. Kiểm tra prev / next tồn tại, cùng board, chưa lưu trữ.
+ *  4. Kiểm tra prev / next đang liền kề trên server; không khớp -> 409 (client nên tải lại board).
+ *  5. Đã đúng vị trí -> trả về luôn, không ghi DB / log.
+ *  6. needsRebalance -> rebalanceLists rồi tính lại; calcPosition -> lưu -> log LIST_MOVED.
+ */
+export const moveList = asyncHandler<IdParams>(async (req, res) => {
+  const body = ensureBody(req.body);
+  const prevListId = nullableUuid(body, 'prevListId');
+  const nextListId = nullableUuid(body, 'nextListId');
+  const { id } = req.params;
+
+  if (prevListId === id || nextListId === id) {
+    throw AppError.badRequest('prevListId / nextListId không được trùng với list đang di chuyển');
+  }
+  if (prevListId !== null && prevListId === nextListId) {
+    throw AppError.badRequest('prevListId và nextListId không được trùng nhau');
+  }
+
+  const result = await sequelize.transaction(async (transaction) => {
+    // 1. Lấy boardId của list (chưa khoá, chỉ để biết cần khoá board nào)
+    const target = await findListOrThrow(id, { transaction });
+    const { boardId } = target;
+
+    // 2. Khoá toàn bộ list trong board
+    const boardLists = await List.findAll({
+      where: { boardId },
+      order: [['id', 'ASC']],
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
+
+    const byId = new Map(boardLists.map((item) => [item.id, item]));
+    const list = byId.get(id);
+    // List có thể vừa bị xoá bởi request khác trước khi ta khoá được
+    if (!list) throw AppError.notFound('Không tìm thấy list');
+    if (list.isArchived) throw AppError.badRequest('Không thể di chuyển list đã lưu trữ');
+
+    // 3. prev / next phải cùng board và đang hoạt động
+    const resolveNeighbor = (neighborId: string | null, field: string): List | null => {
+      if (neighborId === null) return null;
+      const neighbor = byId.get(neighborId);
+      if (!neighbor) {
+        throw AppError.badRequest(`"${field}" không tồn tại hoặc không thuộc cùng board`, { field });
+      }
+      if (neighbor.isArchived) {
+        throw AppError.badRequest(`"${field}" là list đã lưu trữ`, { field });
+      }
+      return neighbor;
+    };
+    const prev = resolveNeighbor(prevListId, 'prevListId');
+    const next = resolveNeighbor(nextListId, 'nextListId');
+
+    // 4. Kiểm tra prev / next liền kề trong danh sách đang hoạt động (bỏ list đang kéo)
+    const activeOrdered = boardLists
+      .filter((item) => !item.isArchived && item.id !== id)
+      .sort(
+        (a, b) =>
+          a.position - b.position ||
+          a.createdAt.getTime() - b.createdAt.getTime() ||
+          a.id.localeCompare(b.id),
+      );
+    const prevIndex = prev ? activeOrdered.indexOf(prev) : -1;
+    const expectedNext = activeOrdered[prevIndex + 1] ?? null;
+    if (expectedNext !== next) {
+      throw AppError.conflict('Vị trí thả không còn hợp lệ, vui lòng tải lại board', {
+        prevListId,
+        nextListId,
+      });
+    }
+
+    // 5. Đã ở đúng vị trí -> không làm gì
+    const fromPosition = list.position;
+    const alreadyInPlace =
+      (prev === null || prev.position < fromPosition) &&
+      (next === null || fromPosition < next.position);
+    if (alreadyInPlace) {
+      return { list, rebalanced: false, positions: undefined as PositionUpdate[] | undefined };
+    }
+
+    // 6. Tính position mới, rebalance nếu khoảng cách quá nhỏ
+    let prevPos = prev ? prev.position : null;
+    let nextPos = next ? next.position : null;
+    let rebalanced = false;
+    let positions: PositionUpdate[] | undefined;
+
+    if (needsRebalance(prevPos, nextPos)) {
+      positions = await rebalanceLists(boardId, transaction);
+      rebalanced = true;
+      const newPositions = new Map(positions.map((p) => [p.id, p.position]));
+      prevPos = prev ? (newPositions.get(prev.id) ?? null) : null;
+      nextPos = next ? (newPositions.get(next.id) ?? null) : null;
+    }
+
+    const toPosition = calcPosition(prevPos, nextPos);
+    list.position = toPosition;
+    await list.save({ transaction });
+
+    if (positions) {
+      // Cập nhật vị trí mới của list vừa kéo vào kết quả rebalance để client đồng bộ 1 lần
+      positions = positions
+        .map((p) => (p.id === list.id ? { id: p.id, position: toPosition } : p))
+        .sort((a, b) => a.position - b.position);
+    }
+
+    await logActivity(
+      {
+        boardId,
+        entityType: 'list',
+        entityId: list.id,
+        action: 'LIST_MOVED',
+        metadata: {
+          title: list.title,
+          fromPosition,
+          toPosition,
+          prevListId,
+          nextListId,
+          rebalanced,
+        },
+      },
+      transaction,
+    );
+
+    return { list, rebalanced, positions };
+  });
+
+  sendSuccess(
+    res,
+    {
+      list: result.list,
+      rebalanced: result.rebalanced,
+      ...(result.positions && { positions: result.positions }),
+    },
+    'Di chuyển list thành công',
+  );
 });
 
 /**
