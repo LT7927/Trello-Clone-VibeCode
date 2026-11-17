@@ -26,10 +26,12 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
-import { AlertCircle, Loader2, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, X } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useBoardStore } from '@/store/useBoardStore';
 import type { CardWithTags, ListWithCards } from '@/types';
+import { BoardLoading } from './BoardLoading';
 import { getDragType, type DragItemType } from './dnd';
 import { InlineAddForm } from './InlineAddForm';
 import { CardPreview } from './KanbanCard';
@@ -257,21 +259,25 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
         <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-gray-100 p-4 text-center">
           <AlertCircle className="size-8 text-red-500" aria-hidden />
           <p className="text-sm text-gray-700">{error ?? 'Không thể tải board'}</p>
-          <button
-            type="button"
-            onClick={() => void fetchBoard(boardId)}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Thử lại
-          </button>
+          <div className="flex gap-2">
+            <Link
+              href="/"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
+            >
+              Về trang chủ
+            </Link>
+            <button
+              type="button"
+              onClick={() => void fetchBoard(boardId)}
+              className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Thử lại
+            </button>
+          </div>
         </div>
       );
     }
-    return (
-      <div className="flex h-dvh items-center justify-center bg-gray-100 text-gray-500">
-        <Loader2 className="size-6 animate-spin" aria-label="Đang tải board" />
-      </div>
-    );
+    return <BoardLoading />;
   }
 
   const activeList = active?.type === 'list' ? lists.find((l) => l.id === active.id) : undefined;
@@ -279,9 +285,18 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
 
   return (
     <div className="flex h-dvh flex-col bg-gray-100">
-      <header className="shrink-0 px-4 py-3">
-        <h1 className="text-lg font-bold text-gray-900">{board.title}</h1>
-        {board.description && <p className="text-sm text-gray-600">{board.description}</p>}
+      <header className="flex shrink-0 items-center gap-3 px-4 py-3">
+        <Link
+          href="/"
+          aria-label="Về danh sách board"
+          className="rounded-md p-1.5 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
+        >
+          <ArrowLeft className="size-5" aria-hidden />
+        </Link>
+        <div className="min-w-0">
+          <h1 className="truncate text-lg font-bold text-gray-900">{board.title}</h1>
+          {board.description && <p className="truncate text-sm text-gray-600">{board.description}</p>}
+        </div>
       </header>
 
       {actionError && (
