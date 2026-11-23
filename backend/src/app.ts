@@ -5,6 +5,7 @@ import { errorHandler, notFoundHandler } from './middlewares/errorHandler';
 import { boardRoutes } from './routes/board.routes';
 import { boardListRoutes, listRoutes } from './routes/list.routes';
 import { cardRoutes, listCardRoutes } from './routes/card.routes';
+import { boardTagRoutes, cardTagRoutes, tagRoutes } from './routes/tag.routes';
 
 export const app = express();
 
@@ -15,11 +16,15 @@ app.get('/api/health', (_req, res) => {
   sendSuccess(res, { status: 'up' }, 'Server đang hoạt động');
 });
 
+// Route lồng nhau phải đăng ký TRƯỚC route cha tương ứng
 app.use('/api/boards/:boardId/lists', boardListRoutes);
+app.use('/api/boards/:boardId/tags', boardTagRoutes);
 app.use('/api/boards', boardRoutes);
 app.use('/api/lists/:listId/cards', listCardRoutes);
 app.use('/api/lists', listRoutes);
+app.use('/api/cards/:cardId/tags', cardTagRoutes);
 app.use('/api/cards', cardRoutes);
+app.use('/api/tags', tagRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

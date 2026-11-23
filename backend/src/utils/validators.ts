@@ -111,6 +111,22 @@ export function nullableUuid(body: Body, field: string): string | null {
   return value;
 }
 
+const HEX_COLOR_REGEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+/** Mã màu hex #RGB hoặc #RRGGBB, chuẩn hoá về chữ in hoa (vd: #61BD4F) */
+export function requiredHexColor(body: Body, field: string): string {
+  const value = body[field];
+  if (typeof value !== 'string' || !HEX_COLOR_REGEX.test(value.trim())) {
+    fail(field, `Trường "${field}" là bắt buộc và phải là mã màu hex dạng #RGB hoặc #RRGGBB`);
+  }
+  return value.trim().toUpperCase();
+}
+
+export function optionalHexColor(body: Body, field: string): string | undefined {
+  if (body[field] === undefined) return undefined;
+  return requiredHexColor(body, field);
+}
+
 /** Nhận chuỗi ISO 8601; null để xoá giá trị */
 export function optionalDate(body: Body, field: string): Date | null | undefined {
   const value = body[field];

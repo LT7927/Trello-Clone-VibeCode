@@ -22,6 +22,13 @@ export const ACTIVITY_ACTIONS = [
   'CARD_DELETED',
   // Chỉ ghi khi card chuyển sang list KHÁC (kéo trong cùng list không ghi log)
   'CARD_MOVED',
+  // Quản lý tag cấp board (cardId = null)
+  'TAG_CREATED',
+  'TAG_UPDATED',
+  'TAG_DELETED',
+  // Gắn / gỡ tag trên card (có cardId -> hiển thị trong Modal Chi tiết Card)
+  'TAG_ADDED',
+  'TAG_REMOVED',
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
