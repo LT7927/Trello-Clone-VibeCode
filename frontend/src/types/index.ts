@@ -272,3 +272,13 @@ export interface RemoveTagFromCardResult {
   tagId: string;
   removed: boolean;
 }
+
+/**
+ * GET /boards/:boardId/activities — 1 trang lịch sử, mới nhất trước (createdAt DESC, id DESC).
+ * `nextCursor` là chuỗi mờ (opaque): truyền nguyên vào `before` để lấy trang kế tiếp; null khi hết.
+ */
+export interface BoardActivitiesResult {
+  items: ActivityLog[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}

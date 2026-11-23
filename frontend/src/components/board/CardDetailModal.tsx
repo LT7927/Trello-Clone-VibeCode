@@ -11,7 +11,6 @@ import {
   Loader2,
   Plus,
   RotateCw,
-  Tag as TagIcon,
   Tags,
   Trash2,
   X,
@@ -28,10 +27,10 @@ import {
 } from 'react';
 import { cn } from '@/lib/utils';
 import { isApiError } from '@/lib/axios';
-import { isHexColor } from '@/lib/tags';
 import * as boardApi from '@/services/api';
 import { findCard, useBoardStore } from '@/store/useBoardStore';
-import type { ActivityLog, CardDetails, UpdateCardPayload } from '@/types';
+import type { CardDetails, UpdateCardPayload } from '@/types';
+import { ActivityEntry } from './activityFormat';
 import { TagChip, TagPicker } from './TagPicker';
 
 /**
@@ -52,35 +51,12 @@ const DESCRIPTION_MAX = 10_000;
 // Format ngày giờ
 // ============================================================
 
-const dateTimeFormatter = new Intl.DateTimeFormat('vi-VN', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-});
 const dueDateFormatter = new Intl.DateTimeFormat('vi-VN', {
   weekday: 'long',
   day: '2-digit',
   month: '2-digit',
   year: 'numeric',
 });
-const relativeFormatter = new Intl.RelativeTimeFormat('vi', { numeric: 'auto' });
-
-/** "Vừa xong", "5 phút trước", "3 giờ trước", "Hôm qua"... quá 7 ngày -> ngày giờ đầy đủ */
-function formatRelativeTime(iso: string, now: number): string {
-  const time = new Date(iso).getTime();
-  if (Number.isNaN(time)) return '';
-  const seconds = Math.round((now - time) / 1000);
-
-  if (seconds < 45) return 'Vừa xong';
-  let text: string;
-  if (seconds < 3600) text = relativeFormatter.format(-Math.max(1, Math.round(seconds / 60)), 'minute');
-  else if (seconds < 86_400) text = relativeFormatter.format(-Math.round(seconds / 3600), 'hour');
-  else if (seconds < 7 * 86_400) text = relativeFormatter.format(-Math.round(seconds / 86_400), 'day');
-  else return dateTimeFormatter.format(time);
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
 
 /** ISO -> "YYYY-MM-DD" theo giờ địa phương (giá trị của <input type="date">) */
 function toDateInputValue(iso: string | null): string {
@@ -102,131 +78,6 @@ function fromDateInputValue(value: string): string | null {
   if (year < 1900) return null;
   const date = new Date(year, month - 1, day, 12);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
-// ============================================================
-// Mô tả activity bằng tiếng Việt
-// ============================================================
-
-const FIELD_LABELS: Record<string, string> = {
-  title: 'tiêu đề',
-  description: 'mô tả',
-  dueDate: 'ngày hết hạn',
-};
-
-function metaString(metadata: ActivityLog['metadata'], key: string): string | null {
-  const value = metadata?.[key];
-  return typeof value === 'string' && value.trim() ? value : null;
-}
-
-function joinVietnamese(items: string[]): string {
-  if (items.length <= 1) return items.join('');
-  return `${items.slice(0, -1).join(', ')} và ${items[items.length - 1]}`;
-}
-
-function Quote({ children }: { children: ReactNode }) {
-  return <span className="font-medium text-gray-900">“{children}”</span>;
-}
-
-/** Tên nhãn trong lịch sử: chip đúng màu lúc ghi log, thiếu màu -> trích dẫn thường */
-function ActivityTag({ name, color }: { name: string; color: string | null }) {
-  if (!color || !isHexColor(color)) return <Quote>{name}</Quote>;
-  return <TagChip tag={{ name, color }} className="mx-0.5 align-middle shadow-none" />;
-}
-
-function describeActivity(activity: ActivityLog): ReactNode {
-  const { metadata } = activity;
-
-  switch (activity.action) {
-    case 'TAG_ADDED':
-    case 'TAG_REMOVED': {
-      const tagName = metaString(metadata, 'tagName');
-      const added = activity.action === 'TAG_ADDED';
-      if (!tagName) return added ? 'Đã gắn nhãn vào thẻ' : 'Đã gỡ nhãn khỏi thẻ';
-      return (
-        <>
-          {added ? 'Đã gắn nhãn' : 'Đã gỡ nhãn'}{' '}
-          <ActivityTag name={tagName} color={metaString(metadata, 'tagColor')} />
-          {added ? ' vào thẻ' : ' khỏi thẻ'}
-        </>
-      );
-    }
-
-    case 'CARD_CREATED': {
-      const listTitle = metaString(metadata, 'listTitle');
-      return listTitle ? (
-        <>
-          Đã tạo thẻ trong danh sách <Quote>{listTitle}</Quote>
-        </>
-      ) : (
-        'Đã tạo thẻ'
-      );
-    }
-
-    case 'CARD_UPDATED': {
-      const oldTitle = metaString(metadata, 'oldTitle');
-      const newTitle = metaString(metadata, 'newTitle');
-      const changed = Array.isArray(metadata?.changedFields)
-        ? metadata.changedFields.filter((f): f is string => typeof f === 'string')
-        : [];
-      const others = changed.filter((f) => f !== 'title').map((f) => FIELD_LABELS[f] ?? f);
-
-      if (oldTitle && newTitle) {
-        return (
-          <>
-            Đã đổi tiêu đề từ <Quote>{oldTitle}</Quote> thành <Quote>{newTitle}</Quote>
-            {others.length > 0 && `, đồng thời cập nhật ${joinVietnamese(others)}`}
-          </>
-        );
-      }
-      const labels = changed.map((f) => FIELD_LABELS[f] ?? f);
-      return labels.length > 0 ? `Đã cập nhật ${joinVietnamese(labels)}` : 'Đã cập nhật thẻ';
-    }
-
-    case 'CARD_COMPLETED':
-      return 'Đã đánh dấu thẻ là hoàn thành';
-    case 'CARD_UNCOMPLETED':
-      return 'Đã bỏ đánh dấu hoàn thành';
-    case 'CARD_ARCHIVED':
-      return 'Đã lưu trữ thẻ';
-    case 'CARD_RESTORED':
-      return 'Đã khôi phục thẻ từ lưu trữ';
-
-    case 'CARD_MOVED': {
-      const from = metaString(metadata, 'fromListTitle');
-      const to = metaString(metadata, 'toListTitle');
-      if (from && to) {
-        return (
-          <>
-            Đã chuyển thẻ từ <Quote>{from}</Quote> sang <Quote>{to}</Quote>
-          </>
-        );
-      }
-      return to ? (
-        <>
-          Đã chuyển thẻ sang <Quote>{to}</Quote>
-        </>
-      ) : (
-        'Đã di chuyển thẻ'
-      );
-    }
-
-    case 'CARD_DELETED':
-      return 'Đã xóa thẻ';
-
-    default:
-      return `Hoạt động: ${activity.action}`;
-  }
-}
-
-function activityIcon(action: string) {
-  if (action === 'CARD_COMPLETED') return <CheckCircle2 className="size-3.5 text-green-600" aria-hidden />;
-  if (action === 'CARD_ARCHIVED') return <Archive className="size-3.5 text-amber-600" aria-hidden />;
-  if (action === 'CARD_DELETED') return <Trash2 className="size-3.5 text-red-600" aria-hidden />;
-  if (action === 'TAG_ADDED' || action === 'TAG_REMOVED') {
-    return <TagIcon className="size-3.5 text-gray-500" aria-hidden />;
-  }
-  return <span className="size-1.5 rounded-full bg-gray-400" aria-hidden />;
 }
 
 // ============================================================
@@ -845,19 +696,7 @@ function ActivityFeed({ details, onRetry }: { details: DetailsState; onRetry: ()
     <ol className="flex flex-col gap-3">
       {activities.map((activity) => (
         <li key={activity.id} className="flex gap-3 text-sm">
-          <span className="mt-1.5 flex size-4 shrink-0 items-center justify-center">
-            {activityIcon(activity.action)}
-          </span>
-          <div className="min-w-0">
-            <p className="break-words text-gray-700">{describeActivity(activity)}</p>
-            <time
-              dateTime={activity.createdAt}
-              title={dateTimeFormatter.format(new Date(activity.createdAt))}
-              className="text-xs text-gray-500"
-            >
-              {formatRelativeTime(activity.createdAt, details.loadedAt)}
-            </time>
-          </div>
+          <ActivityEntry activity={activity} now={details.loadedAt} scope="card" />
         </li>
       ))}
     </ol>

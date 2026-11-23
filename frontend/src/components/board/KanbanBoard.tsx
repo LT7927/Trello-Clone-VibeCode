@@ -33,6 +33,7 @@ import { getBoardColor, getBoardTone } from '@/lib/boardTheme';
 import { cn } from '@/lib/utils';
 import { useBoardStore } from '@/store/useBoardStore';
 import type { CardWithTags, ListWithCards } from '@/types';
+import { ActivityDrawer } from './ActivityDrawer';
 import { BoardHeader } from './BoardHeader';
 import { BoardLoading } from './BoardLoading';
 import { CardDetailModal } from './CardDetailModal';
@@ -97,6 +98,16 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const closeCardModal = useCallback(() => setOpenCardId(null), []);
   const recentlyMovedToNewList = useRef(false);
+
+  // ---------- Drawer lịch sử hoạt động ----------
+  const [activityOpen, setActivityOpen] = useState(false);
+  const openActivity = useCallback(() => setActivityOpen(true), []);
+  const closeActivity = useCallback(() => setActivityOpen(false), []);
+  /** Click log của 1 thẻ trong drawer -> đóng drawer, mở modal chi tiết thẻ đó */
+  const openCardFromActivity = useCallback((cardId: string) => {
+    setActivityOpen(false);
+    setOpenCardId(cardId);
+  }, []);
 
   // Sau khi card đổi list, layout dịch chuyển -> bỏ qua 1 frame collision để tránh nhảy qua lại
   useEffect(() => {
@@ -300,7 +311,7 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
       className={cn('flex h-dvh flex-col transition-colors', !boardColor && 'bg-gray-100')}
       style={boardColor ? { backgroundColor: boardColor } : undefined}
     >
-      <BoardHeader board={board} tone={tone} />
+      <BoardHeader board={board} tone={tone} activityOpen={activityOpen} onOpenActivity={openActivity} />
 
       {actionError && (
         <div
@@ -355,6 +366,11 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
           {activeCard && <CardPreview card={activeCard} className="rotate-2 cursor-grabbing shadow-lg" />}
         </DragOverlay>
       </DndContext>
+
+      {/* Mount mỗi lần mở -> luôn tải lại 20 hoạt động mới nhất */}
+      {activityOpen && (
+        <ActivityDrawer boardId={board.id} onClose={closeActivity} onOpenCard={openCardFromActivity} />
+      )}
 
       {/* key: đổi card -> mount lại modal, state (nháp, lịch sử) không bị lẫn giữa các card */}
       {selectedCardId && (

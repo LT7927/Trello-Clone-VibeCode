@@ -3,6 +3,7 @@ import { api } from '@/lib/axios';
 import type {
   ApiResponse,
   Board,
+  BoardActivitiesResult,
   BoardDetails,
   Card,
   CardDetails,
@@ -201,6 +202,27 @@ export function removeTagFromCard(
   tagId: string,
 ): Promise<ApiResponse<RemoveTagFromCardResult>> {
   return del<RemoveTagFromCardResult>(`/cards/${enc(cardId)}/tags/${enc(tagId)}`);
+}
+
+// ============================================================
+// Activity
+// ============================================================
+
+/**
+ * GET /boards/:boardId/activities?limit=&before=
+ * - `limit`: 1..50 (server mặc định 20).
+ * - `before`: `nextCursor` của trang trước; bỏ trống -> trang mới nhất.
+ * Cursor sai định dạng / limit ngoài khoảng -> 400; board không tồn tại -> 404.
+ */
+export function getBoardActivities(
+  boardId: string,
+  params: { limit?: number; before?: string } = {},
+  options?: RequestOptions,
+): Promise<ApiResponse<BoardActivitiesResult>> {
+  const query: Record<string, string> = {};
+  if (params.limit !== undefined) query.limit = String(params.limit);
+  if (params.before) query.before = params.before;
+  return get<BoardActivitiesResult>(`/boards/${enc(boardId)}/activities`, { ...options, params: query });
 }
 
 // ============================================================

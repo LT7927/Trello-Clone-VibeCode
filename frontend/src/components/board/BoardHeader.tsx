@@ -1,6 +1,6 @@
 'use client';
 
-import { Archive, ArrowLeft, Check, Loader2, Settings, Trash2, X } from 'lucide-react';
+import { Activity, Archive, ArrowLeft, Check, Loader2, Settings, Trash2, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
@@ -371,7 +371,15 @@ function BoardSettingsMenu({ board, tone }: { board: Board; tone: BoardTone }) {
 // Header
 // ============================================================
 
-export function BoardHeader({ board, tone }: { board: Board; tone: BoardTone }) {
+interface BoardHeaderProps {
+  board: Board;
+  tone: BoardTone;
+  /** Drawer lịch sử hoạt động đang mở (để tô nút + aria-expanded) */
+  activityOpen: boolean;
+  onOpenActivity: () => void;
+}
+
+export function BoardHeader({ board, tone, activityOpen, onOpenActivity }: BoardHeaderProps) {
   const classes = TONE_CLASSES[tone];
 
   return (
@@ -389,6 +397,21 @@ export function BoardHeader({ board, tone }: { board: Board; tone: BoardTone }) 
           </p>
         )}
       </div>
+      <button
+        type="button"
+        onClick={onOpenActivity}
+        aria-label="Lịch sử hoạt động"
+        title="Lịch sử hoạt động"
+        aria-haspopup="dialog"
+        aria-expanded={activityOpen}
+        className={cn(
+          'shrink-0 rounded-md p-1.5',
+          classes.button,
+          activityOpen && (tone === 'dark' ? 'bg-white/20' : 'bg-black/10'),
+        )}
+      >
+        <Activity className="size-5" aria-hidden />
+      </button>
       <BoardSettingsMenu board={board} tone={tone} />
     </header>
   );
