@@ -139,6 +139,12 @@ export interface BoardState {
   moveCard: (params: MoveCardParams) => Promise<boolean>;
   moveList: (params: MoveListParams) => Promise<boolean>;
   createList: (title: string) => Promise<boolean>;
+  /** Đổi tên ngay trên UI; lỗi -> trả lại tên cũ. Tên rỗng / không đổi -> không gọi API. */
+  renameList: (listId: string, title: string) => Promise<boolean>;
+  /** Ẩn list (kèm card) khỏi board ngay; lỗi -> đưa list về đúng vị trí cũ */
+  archiveList: (listId: string) => Promise<boolean>;
+  /** Xoá list (kèm card) khỏi board ngay; lỗi -> đưa list về đúng vị trí cũ */
+  deleteList: (listId: string) => Promise<boolean>;
   createCard: (listId: string, title: string) => Promise<boolean>;
   editCard: (cardId: string, payload: UpdateCardPayload) => Promise<boolean>;
 }
@@ -159,6 +165,47 @@ export const useBoardStore = create<BoardState>()((set, get) => {
   /** Cập nhật `board.lists` nếu board đã được tải */
   const setLists = (updater: (lists: ListWithCards[]) => ListWithCards[]) =>
     set((state) => (state.board ? { board: { ...state.board, lists: updater(state.board.lists) } } : {}));
+
+  /**
+   * Sửa field của list trên board VÀ trong moveSnapshot (nếu có).
+   * Nhờ vậy, nếu một lượt kéo thả đang chờ bị rollback, thay đổi này không bị mất theo.
+   */
+  const patchList = (listId: string, fields: Partial<Pick<List, 'title' | 'updatedAt'>>) => {
+    const patch = (lists: ListWithCards[]) =>
+      lists.map((l) => (l.id === listId ? { ...l, ...fields } : l));
+    set((state) => ({
+      board: state.board ? { ...state.board, lists: patch(state.board.lists) } : state.board,
+      moveSnapshot: state.moveSnapshot ? patch(state.moveSnapshot) : state.moveSnapshot,
+    }));
+  };
+
+  /** Luồng chung cho archive / delete: gỡ list ngay, API lỗi thì đưa lại */
+  const removeListOptimistic = async (listId: string, request: () => Promise<unknown>) => {
+    const { board } = get();
+    const removed = board?.lists.find((l) => l.id === listId);
+    if (!board || !removed) return false;
+
+    get().removeList(listId);
+    // Gỡ cả khỏi snapshot -> rollback kéo thả sau đó không làm list "sống lại"
+    set((state) => ({
+      moveSnapshot: state.moveSnapshot?.filter((l) => l.id !== listId) ?? null,
+    }));
+
+    try {
+      await request();
+      return true;
+    } catch (error) {
+      // 404: list đã không còn trên server -> kết quả cuối cùng vẫn đúng, không khôi phục
+      if (isApiError(error) && error.isNotFound) return true;
+
+      const current = get().board;
+      if (current?.id === board.id && !current.lists.some((l) => l.id === listId)) {
+        get().addList(removed); // addList sắp theo position -> về đúng chỗ cũ, giữ nguyên card
+      }
+      set({ actionError: getErrorMessage(error) });
+      return false;
+    }
+  };
 
   /** Xử lý chung khi API kéo thả lỗi */
   const handleMoveError = (boardId: string, error: unknown) => {
@@ -468,6 +515,36 @@ export const useBoardStore = create<BoardState>()((set, get) => {
         return false;
       }
     },
+
+    renameList: async (listId, title) => {
+      const value = title.trim();
+      const list = get().board?.lists.find((l) => l.id === listId);
+      if (!list || !value) return false;
+      if (value === list.title) return true;
+
+      const previousTitle = list.title;
+      const titleIs = (expected: string) =>
+        get().board?.lists.find((l) => l.id === listId)?.title === expected;
+
+      patchList(listId, { title: value });
+
+      try {
+        const { data } = await boardApi.updateList(listId, { title: value });
+        // Chỉ chốt title (không lấy position từ response để không giật list đang kéo thả chờ xác nhận).
+        // Nếu user đã đổi tên tiếp trong lúc chờ thì giữ tên mới nhất.
+        if (titleIs(value)) patchList(listId, { title: data.title, updatedAt: data.updatedAt });
+        return true;
+      } catch (error) {
+        if (titleIs(value)) patchList(listId, { title: previousTitle });
+        set({ actionError: getErrorMessage(error) });
+        return false;
+      }
+    },
+
+    archiveList: (listId) =>
+      removeListOptimistic(listId, () => boardApi.updateList(listId, { isArchived: true })),
+
+    deleteList: (listId) => removeListOptimistic(listId, () => boardApi.deleteList(listId)),
 
     createCard: async (listId, title) => {
       const list = get().board?.lists.find((l) => l.id === listId);
