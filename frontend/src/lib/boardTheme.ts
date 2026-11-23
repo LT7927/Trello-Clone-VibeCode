@@ -56,3 +56,31 @@ export function getBoardTone(background: string | null | undefined): BoardTone {
   if (!color) return 'default';
   return isDarkColor(color) ? 'dark' : 'light';
 }
+
+/** Class cho chữ / nút trên header board theo tông màu nền -> luôn đủ tương phản */
+export const HEADER_TONE_CLASSES: Record<
+  BoardTone,
+  { header: string; text: string; subtext: string; button: string; buttonActive: string }
+> = {
+  default: {
+    header: '',
+    text: 'text-gray-900',
+    subtext: 'text-gray-600',
+    button: 'text-gray-600 hover:bg-gray-200 hover:text-gray-900',
+    buttonActive: 'bg-black/10',
+  },
+  dark: {
+    header: 'bg-black/20',
+    text: 'text-white',
+    subtext: 'text-white/80',
+    button: 'text-white/90 hover:bg-white/20 hover:text-white',
+    buttonActive: 'bg-white/20',
+  },
+  light: {
+    header: 'bg-white/35',
+    text: 'text-gray-900',
+    subtext: 'text-gray-700',
+    button: 'text-gray-700 hover:bg-black/10 hover:text-gray-900',
+    buttonActive: 'bg-black/10',
+  },
+};

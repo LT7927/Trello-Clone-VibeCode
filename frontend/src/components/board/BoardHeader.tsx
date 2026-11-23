@@ -4,35 +4,21 @@ import { Activity, Archive, ArrowLeft, Check, Loader2, Settings, Trash2, X } fro
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
-import { BOARD_COLORS, getBoardColor, isSameColor, type BoardTone } from '@/lib/boardTheme';
+import {
+  BOARD_COLORS,
+  getBoardColor,
+  HEADER_TONE_CLASSES as TONE_CLASSES,
+  isSameColor,
+  type BoardTone,
+} from '@/lib/boardTheme';
+import type { CardFilter } from '@/lib/cardFilter';
 import { cn } from '@/lib/utils';
 import { useBoardStore } from '@/store/useBoardStore';
-import type { Board } from '@/types';
+import type { Board, Tag } from '@/types';
+import { BoardFilter } from './BoardFilter';
 
 const TITLE_MAX = 255;
 const DESCRIPTION_MAX = 5000;
-
-/** Class cho chữ / nút trên header theo tông màu nền -> luôn đủ tương phản */
-const TONE_CLASSES: Record<BoardTone, { header: string; text: string; subtext: string; button: string }> = {
-  default: {
-    header: '',
-    text: 'text-gray-900',
-    subtext: 'text-gray-600',
-    button: 'text-gray-600 hover:bg-gray-200 hover:text-gray-900',
-  },
-  dark: {
-    header: 'bg-black/20',
-    text: 'text-white',
-    subtext: 'text-white/80',
-    button: 'text-white/90 hover:bg-white/20 hover:text-white',
-  },
-  light: {
-    header: 'bg-white/35',
-    text: 'text-gray-900',
-    subtext: 'text-gray-700',
-    button: 'text-gray-700 hover:bg-black/10 hover:text-gray-900',
-  },
-};
 
 // ============================================================
 // Tiêu đề board: click để sửa
@@ -232,7 +218,7 @@ function BoardSettingsMenu({ board, tone }: { board: Board; tone: BoardTone }) {
         className={cn(
           'rounded-md p-1.5',
           TONE_CLASSES[tone].button,
-          isOpen && (tone === 'dark' ? 'bg-white/20' : 'bg-black/10'),
+          isOpen && TONE_CLASSES[tone].buttonActive,
         )}
       >
         <Settings className="size-5" aria-hidden />
@@ -374,20 +360,33 @@ function BoardSettingsMenu({ board, tone }: { board: Board; tone: BoardTone }) {
 interface BoardHeaderProps {
   board: Board;
   tone: BoardTone;
+  /** Tag của board -> lựa chọn trong bộ lọc */
+  tags: Tag[];
+  filter: CardFilter;
+  onFilterChange: (filter: CardFilter) => void;
   /** Drawer lịch sử hoạt động đang mở (để tô nút + aria-expanded) */
   activityOpen: boolean;
   onOpenActivity: () => void;
 }
 
-export function BoardHeader({ board, tone, activityOpen, onOpenActivity }: BoardHeaderProps) {
+export function BoardHeader({
+  board,
+  tone,
+  tags,
+  filter,
+  onFilterChange,
+  activityOpen,
+  onOpenActivity,
+}: BoardHeaderProps) {
   const classes = TONE_CLASSES[tone];
 
   return (
-    <header className={cn('flex shrink-0 items-center gap-2 px-4 py-2.5', classes.header)}>
+    <header className={cn('flex shrink-0 flex-wrap items-center gap-2 px-4 py-2.5', classes.header)}>
       <Link href="/" aria-label="Về danh sách board" className={cn('shrink-0 rounded-md p-1.5', classes.button)}>
         <ArrowLeft className="size-5" aria-hidden />
       </Link>
-      <div className="flex min-w-0 flex-1 flex-col items-start">
+      {/* basis-40: tiêu đề dài không đẩy nhóm nút xuống dòng; chỉ xuống dòng khi màn hình hẹp thật sự */}
+      <div className="flex min-w-0 flex-1 basis-40 flex-col items-start">
         <h1 className="flex min-w-0 max-w-full">
           <BoardTitle title={board.title} tone={tone} />
         </h1>
@@ -397,22 +396,21 @@ export function BoardHeader({ board, tone, activityOpen, onOpenActivity }: Board
           </p>
         )}
       </div>
-      <button
-        type="button"
-        onClick={onOpenActivity}
-        aria-label="Lịch sử hoạt động"
-        title="Lịch sử hoạt động"
-        aria-haspopup="dialog"
-        aria-expanded={activityOpen}
-        className={cn(
-          'shrink-0 rounded-md p-1.5',
-          classes.button,
-          activityOpen && (tone === 'dark' ? 'bg-white/20' : 'bg-black/10'),
-        )}
-      >
-        <Activity className="size-5" aria-hidden />
-      </button>
-      <BoardSettingsMenu board={board} tone={tone} />
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        <BoardFilter tone={tone} tags={tags} filter={filter} onChange={onFilterChange} />
+        <button
+          type="button"
+          onClick={onOpenActivity}
+          aria-label="Lịch sử hoạt động"
+          title="Lịch sử hoạt động"
+          aria-haspopup="dialog"
+          aria-expanded={activityOpen}
+          className={cn('shrink-0 rounded-md p-1.5', classes.button, activityOpen && classes.buttonActive)}
+        >
+          <Activity className="size-5" aria-hidden />
+        </button>
+        <BoardSettingsMenu board={board} tone={tone} />
+      </div>
     </header>
   );
 }

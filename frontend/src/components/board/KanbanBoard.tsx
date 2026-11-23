@@ -26,13 +26,20 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
-import { AlertCircle, X } from 'lucide-react';
+import { AlertCircle, Filter, X } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { getBoardColor, getBoardTone } from '@/lib/boardTheme';
+import {
+  createCardMatcher,
+  EMPTY_CARD_FILTER,
+  isCardFilterActive,
+  sanitizeCardFilter,
+  type CardFilter,
+} from '@/lib/cardFilter';
 import { cn } from '@/lib/utils';
 import { useBoardStore } from '@/store/useBoardStore';
-import type { CardWithTags, ListWithCards } from '@/types';
+import type { CardWithTags, ListWithCards, Tag } from '@/types';
 import { ActivityDrawer } from './ActivityDrawer';
 import { BoardHeader } from './BoardHeader';
 import { BoardLoading } from './BoardLoading';
@@ -64,6 +71,10 @@ type CardOrder = Record<string, string[]>;
 type ActiveDrag = { type: DragItemType; id: string };
 
 const EMPTY_LISTS: ListWithCards[] = [];
+const EMPTY_TAGS: Tag[] = [];
+
+/** Bật lọc "Quá hạn" -> cập nhật mốc thời gian mỗi phút để card vừa quá hạn tự hiện ra */
+const OVERDUE_TICK_MS = 60_000;
 
 function findListId(order: CardOrder, cardId: string): string | undefined {
   return Object.keys(order).find((listId) => order[listId].includes(cardId));
@@ -118,27 +129,69 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
   }, [cardOrder]);
 
   const lists = board?.lists ?? EMPTY_LISTS;
+  const boardTags = board?.tags ?? EMPTY_TAGS;
   const listIds = useMemo(() => lists.map((list) => list.id), [lists]);
+
+  // ---------- Bộ lọc card (chỉ phía client) ----------
+  const [rawFilter, setRawFilter] = useState<CardFilter>(EMPTY_CARD_FILTER);
+  /** Mốc xét "Quá hạn": cập nhật khi đổi bộ lọc + mỗi phút khi đang lọc quá hạn (không gọi Date.now() khi render) */
+  const [now, setNow] = useState(() => Date.now());
+  const handleFilterChange = useCallback((next: CardFilter) => {
+    setRawFilter(next);
+    setNow(Date.now());
+  }, []);
+  const clearFilter = useCallback(() => setRawFilter(EMPTY_CARD_FILTER), []);
+
+  // Tag vừa bị xoá khỏi board -> tự bỏ khỏi bộ lọc
+  const filter = useMemo(() => sanitizeCardFilter(rawFilter, boardTags), [rawFilter, boardTags]);
+  const isFiltering = isCardFilterActive(filter);
+  const watchOverdue = filter.statuses.includes('overdue');
+
+  useEffect(() => {
+    if (!watchOverdue) return;
+    const timer = setInterval(() => setNow(Date.now()), OVERDUE_TICK_MS);
+    return () => clearInterval(timer);
+  }, [watchOverdue]);
+
+  const matchCard = useMemo(
+    () => (isFiltering ? createCardMatcher(filter, now) : null),
+    [isFiltering, filter, now],
+  );
 
   const cardsById = useMemo(
     () => new Map(lists.flatMap((list) => list.cards.map((card) => [card.id, card] as const))),
     [lists],
   );
 
-  /** Card hiển thị cho từng list: lấy từ bản xem trước nếu đang kéo card, ngược lại lấy từ store */
+  /**
+   * Card hiển thị cho từng list:
+   * - Đang lọc   -> chỉ card khớp (kéo card bị khoá nên không có bản xem trước).
+   * - Đang kéo   -> bản xem trước `cardOrder`.
+   * - Còn lại    -> nguyên mảng từ store (giữ tham chiếu để KanbanList memo hiệu quả).
+   */
   const cardsByList = useMemo(() => {
     const result: Record<string, CardWithTags[]> = {};
     for (const list of lists) {
       const previewIds = cardOrder?.[list.id];
-      result[list.id] = previewIds
-        ? previewIds.flatMap((id) => {
-            const card = cardsById.get(id);
-            return card ? [card] : [];
-          })
-        : list.cards;
+      if (matchCard) {
+        result[list.id] = list.cards.filter(matchCard);
+      } else if (previewIds) {
+        result[list.id] = previewIds.flatMap((id) => {
+          const card = cardsById.get(id);
+          return card ? [card] : [];
+        });
+      } else {
+        result[list.id] = list.cards;
+      }
     }
     return result;
-  }, [lists, cardOrder, cardsById]);
+  }, [lists, cardOrder, cardsById, matchCard]);
+
+  const totalCardCount = cardsById.size;
+  const matchedCardCount = useMemo(
+    () => (matchCard ? Object.values(cardsByList).reduce((sum, cards) => sum + cards.length, 0) : totalCardCount),
+    [matchCard, cardsByList, totalCardCount],
+  );
 
   // ---------- Sensors ----------
   const dndId = useId(); // id ổn định giữa server/client -> tránh lỗi hydration aria-describedby
@@ -196,6 +249,8 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
   const handleDragStart = ({ active: dragged }: DragStartEvent) => {
     const type = getDragType(dragged.data.current);
     if (!type) return;
+    // Chốt chặn thứ 2 (card đã disabled khi lọc): danh sách đang thiếu card -> prev/next sẽ sai
+    if (type === 'card' && isFiltering) return;
 
     if (type === 'card') {
       setCardOrder(Object.fromEntries(lists.map((list) => [list.id, list.cards.map((c) => c.id)])));
@@ -311,7 +366,35 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
       className={cn('flex h-dvh flex-col transition-colors', !boardColor && 'bg-gray-100')}
       style={boardColor ? { backgroundColor: boardColor } : undefined}
     >
-      <BoardHeader board={board} tone={tone} activityOpen={activityOpen} onOpenActivity={openActivity} />
+      <BoardHeader
+        board={board}
+        tone={tone}
+        tags={boardTags}
+        filter={filter}
+        onFilterChange={handleFilterChange}
+        activityOpen={activityOpen}
+        onOpenActivity={openActivity}
+      />
+
+      {isFiltering && (
+        <div
+          role="status"
+          className="mx-4 mt-2 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-blue-50 px-3 py-1.5 text-sm text-blue-800 ring-1 ring-blue-200"
+        >
+          <Filter className="size-4 shrink-0" aria-hidden />
+          <span>
+            Đang lọc: hiển thị <strong className="font-semibold">{matchedCardCount}</strong> / {totalCardCount} thẻ.
+          </span>
+          <span className="text-blue-700/80">Tắt bộ lọc để kéo thả thẻ.</span>
+          <button
+            type="button"
+            onClick={clearFilter}
+            className="ml-auto rounded px-2 py-0.5 font-medium hover:bg-blue-100"
+          >
+            Xóa bộ lọc
+          </button>
+        </div>
+      )}
 
       {actionError && (
         <div
@@ -346,6 +429,7 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
                 list={list}
                 cards={cardsByList[list.id]}
                 onOpenCard={setOpenCardId}
+                totalCards={isFiltering ? list.cards.length : undefined}
               />
             ))}
           </SortableContext>
@@ -362,7 +446,7 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
         </div>
 
         <DragOverlay>
-          {activeList && <ListPreview list={activeList} cards={activeList.cards} />}
+          {activeList && <ListPreview list={activeList} cards={cardsByList[activeList.id] ?? activeList.cards} />}
           {activeCard && <CardPreview card={activeCard} className="rotate-2 cursor-grabbing shadow-lg" />}
         </DragOverlay>
       </DndContext>

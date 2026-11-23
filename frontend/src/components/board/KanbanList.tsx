@@ -239,16 +239,22 @@ export function ListPreview({ list, cards }: { list: List; cards: CardWithTags[]
 
 interface KanbanListProps {
   list: List;
-  /** Card cần hiển thị — có thể là bản xem trước khi đang kéo card giữa các list */
+  /** Card cần hiển thị — bản xem trước khi đang kéo card giữa các list, hoặc đã qua bộ lọc */
   cards: CardWithTags[];
   onOpenCard: (cardId: string) => void;
+  /**
+   * Đang bật bộ lọc: `cards` chỉ là các card khớp, `totalCards` là số card thật của list.
+   * undefined = không lọc. Khi lọc, kéo thả card bị khoá.
+   */
+  totalCards?: number;
 }
 
 /**
  * Một cột. Bản thân cột là sortable (kéo bằng header) và đồng thời là droppable
  * cho card (cần khi list rỗng). Card bên trong nằm trong SortableContext riêng của cột.
  */
-export const KanbanList = memo(function KanbanList({ list, cards, onOpenCard }: KanbanListProps) {
+export const KanbanList = memo(function KanbanList({ list, cards, onOpenCard, totalCards }: KanbanListProps) {
+  const isFiltering = totalCards !== undefined;
   const createCard = useBoardStore((state) => state.createCard);
   const cardIds = useMemo(() => cards.map((card) => card.id), [cards]);
 
@@ -282,18 +288,28 @@ export const KanbanList = memo(function KanbanList({ list, cards, onOpenCard }: 
         <h2 className="flex min-w-0 flex-1">
           <ListTitle listId={list.id} title={list.title} />
         </h2>
-        <span className="shrink-0 rounded-full bg-gray-300/70 px-2 text-xs font-medium text-gray-600">
-          {cards.length}
+        <span
+          className={cn(
+            'shrink-0 rounded-full px-2 text-xs font-medium',
+            isFiltering ? 'bg-blue-100 text-blue-700' : 'bg-gray-300/70 text-gray-600',
+          )}
+          title={isFiltering ? `${cards.length} / ${totalCards} thẻ khớp bộ lọc` : undefined}
+        >
+          {isFiltering ? `${cards.length}/${totalCards}` : cards.length}
         </span>
-        <ListActionsMenu listId={list.id} title={list.title} cardCount={cards.length} />
+        {/* Cảnh báo xoá phải dựa trên số card thật, không phải số card đang hiển thị */}
+        <ListActionsMenu listId={list.id} title={list.title} cardCount={totalCards ?? cards.length} />
       </header>
 
       <SortableContext id={list.id} items={cardIds} strategy={verticalListSortingStrategy}>
         {/* min-h giữ vùng thả cho list rỗng */}
         <div className="flex min-h-2 flex-col gap-2 overflow-y-auto px-2 pb-1">
           {cards.map((card) => (
-            <KanbanCard key={card.id} card={card} listId={list.id} onOpen={onOpenCard} />
+            <KanbanCard key={card.id} card={card} listId={list.id} onOpen={onOpenCard} dragDisabled={isFiltering} />
           ))}
+          {isFiltering && cards.length === 0 && (totalCards ?? 0) > 0 && (
+            <p className="px-1 py-1 text-center text-xs text-gray-500">Không có thẻ khớp bộ lọc</p>
+          )}
         </div>
       </SortableContext>
 

@@ -54,16 +54,22 @@ interface KanbanCardProps {
   listId: string;
   /** Mở modal chi tiết. Nên là hàm ổn định (setState) để không phá memo. */
   onOpen: (cardId: string) => void;
+  /**
+   * Khoá kéo thả (đang bật bộ lọc): danh sách hiển thị thiếu card nên prev/next tính từ UI
+   * sẽ sai so với server. Click / Enter vẫn mở chi tiết bình thường.
+   */
+  dragDisabled?: boolean;
 }
 
 /**
  * Card kéo được. Kéo trên toàn bộ thẻ (MouseSensor cần di chuyển > 5px mới kéo -> click = mở chi tiết).
  * Bàn phím: Enter -> mở chi tiết, Space -> bắt đầu kéo bằng bàn phím.
  */
-export const KanbanCard = memo(function KanbanCard({ card, listId, onOpen }: KanbanCardProps) {
+export const KanbanCard = memo(function KanbanCard({ card, listId, onOpen, dragDisabled = false }: KanbanCardProps) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { type: 'card', listId } satisfies CardDragData,
+    disabled: dragDisabled,
   });
 
   return (
@@ -74,10 +80,16 @@ export const KanbanCard = memo(function KanbanCard({ card, listId, onOpen }: Kan
         transform: CSS.Translate.toString(transform),
         transition,
       }}
-      className={cn('cursor-grab touch-manipulation active:cursor-grabbing', isDragging && 'opacity-40')}
+      className={cn(
+        dragDisabled ? 'cursor-pointer' : 'cursor-grab touch-manipulation active:cursor-grabbing',
+        isDragging && 'opacity-40',
+      )}
       {...attributes}
       {...listeners}
+      // useSortable({ disabled }) gắn aria-disabled -> bỏ đi vì card vẫn click để mở được
+      aria-disabled={undefined}
       aria-label={`Mở chi tiết thẻ ${card.title}`}
+      title={dragDisabled ? 'Tắt bộ lọc để kéo thả thẻ' : undefined}
       onClick={() => {
         if (!isDragging) onOpen(card.id);
       }}
