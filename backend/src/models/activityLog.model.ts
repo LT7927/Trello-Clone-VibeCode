@@ -75,7 +75,8 @@ ActivityLog.init(
     indexes: [
       {
         name: 'activity_logs_board_id_created_at_idx',
-        fields: ['board_id', { name: 'created_at', order: 'DESC' }],
+        // Khớp thứ tự phân trang cursor (created_at DESC, id DESC)
+        fields: ['board_id', { name: 'created_at', order: 'DESC' }, { name: 'id', order: 'DESC' }],
       },
     ],
   },
