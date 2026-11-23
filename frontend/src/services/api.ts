@@ -9,17 +9,24 @@ import type {
   CreateBoardPayload,
   CreateCardPayload,
   CreateListPayload,
+  CreateTagPayload,
+  AddTagToCardPayload,
+  AddTagToCardResult,
   DeleteBoardResult,
   DeleteCardResult,
   DeleteListResult,
+  DeleteTagResult,
   List,
   MoveCardPayload,
   MoveCardResult,
   MoveListPayload,
   MoveListResult,
+  RemoveTagFromCardResult,
+  Tag,
   UpdateBoardPayload,
   UpdateCardPayload,
   UpdateListPayload,
+  UpdateTagPayload,
 } from '@/types';
 
 /**
@@ -159,6 +166,41 @@ export function moveCard(cardId: string, payload: MoveCardPayload): Promise<ApiR
 /** DELETE /cards/:id */
 export function deleteCard(cardId: string): Promise<ApiResponse<DeleteCardResult>> {
   return del<DeleteCardResult>(`/cards/${enc(cardId)}`);
+}
+
+// ============================================================
+// Tag
+// ============================================================
+
+/** POST /boards/:boardId/tags — trùng tên (không phân biệt hoa thường) trong board -> 409 */
+export function createTag(boardId: string, payload: CreateTagPayload): Promise<ApiResponse<Tag>> {
+  return post<Tag>(`/boards/${enc(boardId)}/tags`, payload);
+}
+
+/** PATCH /tags/:id — đổi tên trùng tag khác -> 409 */
+export function updateTag(tagId: string, payload: UpdateTagPayload): Promise<ApiResponse<Tag>> {
+  return patch<Tag>(`/tags/${enc(tagId)}`, payload);
+}
+
+/** DELETE /tags/:id — xoá cứng, gỡ khỏi mọi card (trả về affectedCardIds) */
+export function deleteTag(tagId: string): Promise<ApiResponse<DeleteTagResult>> {
+  return del<DeleteTagResult>(`/tags/${enc(tagId)}`);
+}
+
+/** POST /cards/:cardId/tags — idempotent; tag khác board với card -> 400 */
+export function addTagToCard(
+  cardId: string,
+  payload: AddTagToCardPayload,
+): Promise<ApiResponse<AddTagToCardResult>> {
+  return post<AddTagToCardResult>(`/cards/${enc(cardId)}/tags`, payload);
+}
+
+/** DELETE /cards/:cardId/tags/:tagId — idempotent (chưa gắn -> removed = false) */
+export function removeTagFromCard(
+  cardId: string,
+  tagId: string,
+): Promise<ApiResponse<RemoveTagFromCardResult>> {
+  return del<RemoveTagFromCardResult>(`/cards/${enc(cardId)}/tags/${enc(tagId)}`);
 }
 
 // ============================================================

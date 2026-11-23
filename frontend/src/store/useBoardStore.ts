@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { isApiError } from '@/lib/axios';
+import { TAG_NAME_MAX, findTagByName, isHexColor, normalizeHexColor, sortTags } from '@/lib/tags';
 import * as boardApi from '@/services/api';
 import type {
   BoardDetails,
@@ -10,8 +11,10 @@ import type {
   MoveCardPayload,
   MoveListPayload,
   PositionUpdate,
+  Tag,
   UpdateBoardPayload,
   UpdateCardPayload,
+  UpdateTagPayload,
 } from '@/types';
 
 /**
@@ -103,6 +106,42 @@ function toCardChanges(card: Card | CardWithTags): CardChanges {
   return rest;
 }
 
+/** Thêm / ghi đè 1 tag (theo id) rồi sắp theo tên */
+function withTag(tags: Tag[], tag: Tag): Tag[] {
+  return sortTags([...tags.filter((t) => t.id !== tag.id), tag]);
+}
+
+function hasTag(card: CardWithTags | null | undefined, tagId: string): boolean {
+  return card?.tags.some((t) => t.id === tagId) ?? false;
+}
+
+/**
+ * Cập nhật `tags` của nhiều card cùng lúc. `update` trả về null = card không đổi.
+ * Không có card nào đổi -> trả lại nguyên mảng (giữ tham chiếu).
+ */
+function mapCardTagsIn(
+  lists: ListWithCards[],
+  update: (card: CardWithTags) => Tag[] | null,
+): ListWithCards[] {
+  let changed = false;
+  const next = lists.map((l) => {
+    let listChanged = false;
+    const cards = l.cards.map((c) => {
+      const tags = update(c);
+      if (!tags) return c;
+      listChanged = true;
+      return { ...c, tags };
+    });
+    if (!listChanged) return l;
+    changed = true;
+    return { ...l, cards };
+  });
+  return changed ? next : lists;
+}
+
+/** Field của tag sửa được (đồng bộ sang mọi card đang gắn tag đó) */
+type TagFields = Partial<Pick<Tag, 'name' | 'color' | 'createdAt' | 'updatedAt'>>;
+
 // ============================================================
 // State & Actions
 // ============================================================
@@ -192,6 +231,19 @@ export interface BoardState {
   archiveBoard: () => Promise<boolean>;
   /** Xoá vĩnh viễn board hiện tại. true -> UI chuyển về trang chủ; lỗi -> actionError */
   deleteBoard: () => Promise<boolean>;
+
+  // ---------- Tag (Optimistic UI + rollback; lỗi -> actionError) ----------
+  /**
+   * Thêm tag vào board.tags ngay (UUID sinh ở client); lỗi -> gỡ khỏi board và mọi card.
+   * Tên rỗng / quá dài / trùng, màu không hợp lệ -> false, không gọi API.
+   */
+  createTag: (name: string, color: string) => Promise<boolean>;
+  /** Đổi tên / màu trong board.tags VÀ mọi card đang gắn tag; lỗi -> trả lại giá trị cũ */
+  updateTag: (tagId: string, payload: UpdateTagPayload) => Promise<boolean>;
+  /** Gỡ tag khỏi board.tags VÀ mọi card; lỗi -> khôi phục tag và gắn lại vào đúng các card cũ */
+  deleteTag: (tagId: string) => Promise<boolean>;
+  /** Card đã có tag -> gỡ, chưa có -> gắn. Cập nhật card.tags ngay; lỗi -> trả lại trạng thái cũ */
+  toggleCardTag: (cardId: string, tagId: string) => Promise<boolean>;
 }
 
 /** Các field nội dung của board sửa được trên trang board (lưu trữ dùng archiveBoard) */
@@ -208,6 +260,18 @@ const initialState = {
 
 /** Huỷ request fetchBoard cũ khi có request mới (đổi board, tải lại liên tục) */
 let fetchController: AbortController | null = null;
+
+/**
+ * Tag vừa tạo (optimistic) mà server chưa xác nhận: id -> promise kết quả tạo.
+ * Sửa / xoá / gắn tag này phải chờ tạo xong, nếu không server trả 404.
+ */
+const tagCreations = new Map<string, Promise<boolean>>();
+
+/**
+ * Hàng đợi gắn / gỡ theo cặp `cardId:tagId` -> bấm liên tục vẫn gửi đúng thứ tự,
+ * trạng thái cuối trên server khớp với UI.
+ */
+const tagToggleQueue = new Map<string, Promise<boolean>>();
 
 export const useBoardStore = create<BoardState>()((set, get) => {
   /** Cập nhật `board.lists` nếu board đã được tải */
@@ -312,6 +376,46 @@ export const useBoardStore = create<BoardState>()((set, get) => {
     get().rollbackMove();
     set({ actionError: getErrorMessage(error) });
     if (shouldResync) void get().fetchBoard(boardId, { silent: true });
+  };
+
+  // ---------- Helper cho Tag (đều bỏ qua nếu đã chuyển sang board khác) ----------
+
+  const setBoardTags = (boardId: string, updater: (tags: Tag[]) => Tag[]) =>
+    set((state) =>
+      state.board?.id === boardId ? { board: { ...state.board, tags: updater(state.board.tags) } } : {},
+    );
+
+  /** Cập nhật tags của card trên board VÀ trong moveSnapshot -> rollback kéo thả không làm mất thay đổi */
+  const setCardTags = (boardId: string, update: (card: CardWithTags) => Tag[] | null) =>
+    set((state) => {
+      if (state.board?.id !== boardId) return {};
+      const lists = mapCardTagsIn(state.board.lists, update);
+      const snapshot = state.moveSnapshot ? mapCardTagsIn(state.moveSnapshot, update) : state.moveSnapshot;
+      if (lists === state.board.lists && snapshot === state.moveSnapshot) return {};
+      return { board: { ...state.board, lists }, moveSnapshot: snapshot };
+    });
+
+  /** Sửa field của 1 tag ở board.tags và ở mọi card đang gắn tag đó */
+  const patchTag = (boardId: string, tagId: string, fields: TagFields) => {
+    const patch = (tags: Tag[]) => {
+      if (!tags.some((t) => t.id === tagId)) return null;
+      const next = tags.map((t) => (t.id === tagId ? { ...t, ...fields } : t));
+      return fields.name !== undefined ? sortTags(next) : next;
+    };
+    setBoardTags(boardId, (tags) => patch(tags) ?? tags);
+    setCardTags(boardId, (card) => patch(card.tags));
+  };
+
+  /** Gỡ 1 tag khỏi board.tags và mọi card */
+  const removeTagEverywhere = (boardId: string, tagId: string) => {
+    setBoardTags(boardId, (tags) => tags.filter((t) => t.id !== tagId));
+    setCardTags(boardId, (card) => (hasTag(card, tagId) ? card.tags.filter((t) => t.id !== tagId) : null));
+  };
+
+  /** Tag đang được tạo -> chờ server xác nhận. false = tạo thất bại (tag đã bị gỡ khỏi UI). */
+  const waitForTagCreation = async (tagId: string): Promise<boolean> => {
+    const creating = tagCreations.get(tagId);
+    return creating ? creating : true;
   };
 
   return {
@@ -796,6 +900,185 @@ export const useBoardStore = create<BoardState>()((set, get) => {
         if (get().board?.id === board.id) set({ actionError: getErrorMessage(error) });
         return false;
       }
+    },
+
+    // ============================================================
+    // Tag
+    // ============================================================
+
+    createTag: async (name, color) => {
+      const board = get().board;
+      if (!board) return false;
+
+      const value = name.trim();
+      const hex = normalizeHexColor(color);
+      if (!value || value.length > TAG_NAME_MAX || !isHexColor(hex)) return false;
+      const duplicate = findTagByName(board.tags, value);
+      if (duplicate) {
+        set({ actionError: `Nhãn "${duplicate.name}" đã tồn tại trong board` });
+        return false;
+      }
+
+      const boardId = board.id;
+      const id = crypto.randomUUID();
+      const now = new Date().toISOString();
+      setBoardTags(boardId, (tags) =>
+        withTag(tags, { id, boardId, name: value, color: hex, createdAt: now, updatedAt: now }),
+      );
+
+      const request = (async () => {
+        try {
+          const { data } = await boardApi.createTag(boardId, { id, name: value, color: hex });
+          // Server chuẩn hoá name / color giống client -> chỉ chốt mốc thời gian,
+          // giữ nguyên tên / màu phòng khi user đã sửa tiếp trong lúc chờ
+          patchTag(boardId, id, { createdAt: data.createdAt, updatedAt: data.updatedAt });
+          return true;
+        } catch (error) {
+          // Gỡ cả khỏi card đã kịp gắn tag này trong lúc chờ
+          removeTagEverywhere(boardId, id);
+          if (get().board?.id === boardId) set({ actionError: getErrorMessage(error) });
+          return false;
+        } finally {
+          tagCreations.delete(id);
+        }
+      })();
+      tagCreations.set(id, request);
+      return request;
+    },
+
+    updateTag: async (tagId, payload) => {
+      const board = get().board;
+      const tag = board?.tags.find((t) => t.id === tagId);
+      if (!board || !tag) return false;
+
+      const changes: { name?: string; color?: string } = {};
+      if (payload.name !== undefined) {
+        const value = payload.name.trim();
+        if (!value || value.length > TAG_NAME_MAX) return false;
+        if (value !== tag.name) changes.name = value;
+      }
+      if (payload.color !== undefined) {
+        const hex = normalizeHexColor(payload.color);
+        if (!isHexColor(hex)) return false;
+        if (hex !== tag.color) changes.color = hex;
+      }
+      const keys = Object.keys(changes) as (keyof typeof changes)[];
+      if (keys.length === 0) return true; // Không có gì thay đổi -> không gọi API
+
+      if (changes.name !== undefined) {
+        const duplicate = findTagByName(board.tags, changes.name, tagId);
+        if (duplicate) {
+          set({ actionError: `Nhãn "${duplicate.name}" đã tồn tại trong board` });
+          return false;
+        }
+      }
+
+      const boardId = board.id;
+      const previous = { name: tag.name, color: tag.color };
+
+      /** Ghi `source[key]` vào những field VẪN giữ giá trị optimistic của lần sửa này */
+      const settle = (source: Pick<Tag, 'name' | 'color'>, extra: TagFields = {}) => {
+        const current = get().board?.id === boardId ? get().board?.tags.find((t) => t.id === tagId) : null;
+        if (!current) return; // Đã rời board / tag đã bị xoá
+        const fields: TagFields = { ...extra };
+        for (const key of keys) {
+          if (current[key] === changes[key]) fields[key] = source[key];
+        }
+        patchTag(boardId, tagId, fields);
+      };
+
+      patchTag(boardId, tagId, changes);
+
+      try {
+        if (!(await waitForTagCreation(tagId))) return false;
+        const { data } = await boardApi.updateTag(tagId, changes);
+        settle(data, { updatedAt: data.updatedAt });
+        return true;
+      } catch (error) {
+        settle(previous);
+        if (get().board?.id === boardId) set({ actionError: getErrorMessage(error) });
+        return false;
+      }
+    },
+
+    deleteTag: async (tagId) => {
+      const { board, moveSnapshot } = get();
+      const tag = board?.tags.find((t) => t.id === tagId);
+      if (!board || !tag) return false;
+
+      const boardId = board.id;
+      // Nhớ các card đang gắn tag (cả trong snapshot kéo thả) để gắn lại nếu lỗi
+      const cardIds = new Set<string>();
+      for (const lists of [board.lists, moveSnapshot ?? []]) {
+        for (const l of lists) for (const c of l.cards) if (hasTag(c, tagId)) cardIds.add(c.id);
+      }
+
+      removeTagEverywhere(boardId, tagId);
+
+      try {
+        // Tạo thất bại -> tag vốn không tồn tại trên server, kết quả cuối cùng vẫn đúng
+        if (!(await waitForTagCreation(tagId))) return true;
+        await boardApi.deleteTag(tagId);
+        return true;
+      } catch (error) {
+        // 404: tag đã không còn trên server -> không khôi phục
+        if (isApiError(error) && error.isNotFound) return true;
+        if (get().board?.id !== boardId) return false;
+
+        setBoardTags(boardId, (tags) => (tags.some((t) => t.id === tagId) ? tags : withTag(tags, tag)));
+        setCardTags(boardId, (card) =>
+          cardIds.has(card.id) && !hasTag(card, tagId) ? withTag(card.tags, tag) : null,
+        );
+        set({ actionError: getErrorMessage(error) });
+        return false;
+      }
+    },
+
+    toggleCardTag: async (cardId, tagId) => {
+      const board = get().board;
+      const card = findCard(board, cardId);
+      if (!board || !card) return false;
+
+      const attach = !hasTag(card, tagId);
+      if (attach && !board.tags.some((t) => t.id === tagId)) return false; // Tag không thuộc board
+
+      const boardId = board.id;
+      /** Đặt trạng thái gắn / gỡ cho card. Gắn lại tag đã bị xoá khỏi board -> bỏ qua. */
+      const apply = (attached: boolean) =>
+        setCardTags(boardId, (c) => {
+          if (c.id !== cardId || hasTag(c, tagId) === attached) return null;
+          if (!attached) return c.tags.filter((t) => t.id !== tagId);
+          const latest = get().board?.tags.find((t) => t.id === tagId);
+          return latest ? withTag(c.tags, latest) : null;
+        });
+
+      apply(attach);
+
+      const key = `${cardId}:${tagId}`;
+      const previousRequest = tagToggleQueue.get(key) ?? Promise.resolve(true);
+      const request = previousRequest.then(async () => {
+        try {
+          // Tạo tag thất bại -> store đã gỡ tag khỏi mọi card, không cần gọi API
+          if (!(await waitForTagCreation(tagId))) return false;
+          if (attach) await boardApi.addTagToCard(cardId, { tagId });
+          else await boardApi.removeTagFromCard(cardId, tagId);
+          return true;
+        } catch (error) {
+          // Gỡ mà server báo 404 (card / tag đã bị xoá) -> kết quả cuối cùng vẫn đúng
+          if (!attach && isApiError(error) && error.isNotFound) return true;
+          if (get().board?.id !== boardId) return false;
+          // Chỉ trả lại nếu card vẫn giữ trạng thái của lần bấm này (chưa bị bấm tiếp)
+          if (hasTag(findCard(get().board, cardId), tagId) === attach) apply(!attach);
+          set({ actionError: getErrorMessage(error) });
+          return false;
+        }
+      });
+
+      tagToggleQueue.set(key, request);
+      void request.finally(() => {
+        if (tagToggleQueue.get(key) === request) tagToggleQueue.delete(key);
+      });
+      return request;
     },
   };
 });

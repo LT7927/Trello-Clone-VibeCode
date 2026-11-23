@@ -87,6 +87,11 @@ export type ActivityAction =
   | 'CARD_RESTORED'
   | 'CARD_MOVED'
   | 'CARD_DELETED'
+  | 'TAG_CREATED'
+  | 'TAG_UPDATED'
+  | 'TAG_DELETED'
+  | 'TAG_ADDED'
+  | 'TAG_REMOVED'
   // Cho phép action mới từ Backend mà không vỡ type, vẫn giữ gợi ý autocomplete
   | (string & {});
 
@@ -189,6 +194,23 @@ export interface MoveCardPayload {
   nextCardId: string | null;
 }
 
+export interface CreateTagPayload {
+  id?: string;
+  /** Tối đa 50 ký tự, không trùng (không phân biệt hoa thường) trong board */
+  name: string;
+  /** #RGB hoặc #RRGGBB — server lưu dạng in hoa */
+  color: string;
+}
+
+export interface UpdateTagPayload {
+  name?: string;
+  color?: string;
+}
+
+export interface AddTagToCardPayload {
+  tagId: string;
+}
+
 // ============================================================
 // Response data đặc thù
 // ============================================================
@@ -228,4 +250,25 @@ export interface DeleteCardResult {
   id: string;
   listId: string;
   boardId: string;
+}
+
+export interface DeleteTagResult {
+  id: string;
+  boardId: string;
+  /** Các card đã bị gỡ tag này */
+  affectedCardIds: string[];
+}
+
+/** Idempotent: `alreadyAttached = true` -> tag đã được gắn từ trước (HTTP 200 thay vì 201) */
+export interface AddTagToCardResult {
+  cardId: string;
+  tag: Tag;
+  alreadyAttached: boolean;
+}
+
+/** Idempotent: `removed = false` -> tag chưa từng được gắn vào card */
+export interface RemoveTagFromCardResult {
+  cardId: string;
+  tagId: string;
+  removed: boolean;
 }

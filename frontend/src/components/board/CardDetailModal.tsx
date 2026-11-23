@@ -9,7 +9,9 @@ import {
   CheckCircle2,
   Circle,
   Loader2,
+  Plus,
   RotateCw,
+  Tag as TagIcon,
   Tags,
   Trash2,
   X,
@@ -26,9 +28,11 @@ import {
 } from 'react';
 import { cn } from '@/lib/utils';
 import { isApiError } from '@/lib/axios';
+import { isHexColor } from '@/lib/tags';
 import * as boardApi from '@/services/api';
 import { findCard, useBoardStore } from '@/store/useBoardStore';
 import type { ActivityLog, CardDetails, UpdateCardPayload } from '@/types';
+import { TagChip, TagPicker } from './TagPicker';
 
 /**
  * Modal chi tiết card.
@@ -124,10 +128,30 @@ function Quote({ children }: { children: ReactNode }) {
   return <span className="font-medium text-gray-900">“{children}”</span>;
 }
 
+/** Tên nhãn trong lịch sử: chip đúng màu lúc ghi log, thiếu màu -> trích dẫn thường */
+function ActivityTag({ name, color }: { name: string; color: string | null }) {
+  if (!color || !isHexColor(color)) return <Quote>{name}</Quote>;
+  return <TagChip tag={{ name, color }} className="mx-0.5 align-middle shadow-none" />;
+}
+
 function describeActivity(activity: ActivityLog): ReactNode {
   const { metadata } = activity;
 
   switch (activity.action) {
+    case 'TAG_ADDED':
+    case 'TAG_REMOVED': {
+      const tagName = metaString(metadata, 'tagName');
+      const added = activity.action === 'TAG_ADDED';
+      if (!tagName) return added ? 'Đã gắn nhãn vào thẻ' : 'Đã gỡ nhãn khỏi thẻ';
+      return (
+        <>
+          {added ? 'Đã gắn nhãn' : 'Đã gỡ nhãn'}{' '}
+          <ActivityTag name={tagName} color={metaString(metadata, 'tagColor')} />
+          {added ? ' vào thẻ' : ' khỏi thẻ'}
+        </>
+      );
+    }
+
     case 'CARD_CREATED': {
       const listTitle = metaString(metadata, 'listTitle');
       return listTitle ? (
@@ -199,6 +223,9 @@ function activityIcon(action: string) {
   if (action === 'CARD_COMPLETED') return <CheckCircle2 className="size-3.5 text-green-600" aria-hidden />;
   if (action === 'CARD_ARCHIVED') return <Archive className="size-3.5 text-amber-600" aria-hidden />;
   if (action === 'CARD_DELETED') return <Trash2 className="size-3.5 text-red-600" aria-hidden />;
+  if (action === 'TAG_ADDED' || action === 'TAG_REMOVED') {
+    return <TagIcon className="size-3.5 text-gray-500" aria-hidden />;
+  }
   return <span className="size-1.5 rounded-full bg-gray-400" aria-hidden />;
 }
 
@@ -432,9 +459,11 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
 
   const [details, setDetails] = useState<DetailsState>({ status: 'loading' });
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
 
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const tagButtonRef = useRef<HTMLButtonElement>(null);
   const requestRef = useRef<AbortController | null>(null);
   /** Đã sửa gì trong modal chưa -> nếu rồi thì không ghi đè store bằng dữ liệu tải về (tránh mất optimistic) */
   const editedRef = useRef(false);
@@ -515,12 +544,13 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       // Ô nhập bên trong đã tự xử lý Escape (huỷ sửa) -> không đóng modal
       if (event.key !== 'Escape' || event.defaultPrevented) return;
-      if (confirmDelete) setConfirmDelete(false);
+      if (tagPickerOpen) setTagPickerOpen(false);
+      else if (confirmDelete) setConfirmDelete(false);
       else onClose();
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [confirmDelete, onClose]);
+  }, [confirmDelete, tagPickerOpen, onClose]);
 
   // ---------- Focus: đưa vào modal khi mở, trả về chỗ cũ khi đóng ----------
   useEffect(() => {
@@ -564,6 +594,11 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
       if (ok) void loadDetails(true); // Cập nhật lịch sử hoạt động
     });
   };
+
+  const closeTagPicker = useCallback(() => setTagPickerOpen(false), []);
+
+  /** Gắn / gỡ nhãn thành công -> tải lại ngầm để lịch sử có TAG_ADDED / TAG_REMOVED */
+  const handleTagToggled = useCallback(() => void loadDetails(true), [loadDetails]);
 
   const handleArchive = () => {
     onClose(); // Card biến mất khỏi board ngay (optimistic); lỗi -> store đưa card về + báo lỗi
@@ -670,22 +705,44 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
               />
             </div>
 
-            {card.tags.length > 0 && (
-              <section>
-                <SectionTitle icon={<Tags className="size-4 text-gray-500" aria-hidden />}>Nhãn</SectionTitle>
-                <div className="flex flex-wrap gap-1.5">
-                  {card.tags.map((tag) => (
-                    <span
-                      key={tag.id}
-                      className="rounded px-2 py-0.5 text-xs font-medium text-white shadow-sm"
-                      style={{ backgroundColor: tag.color }}
-                    >
-                      {tag.name}
-                    </span>
-                  ))}
-                </div>
-              </section>
-            )}
+            <section>
+              <SectionTitle icon={<Tags className="size-4 text-gray-500" aria-hidden />}>Nhãn</SectionTitle>
+              <div className="relative flex flex-wrap items-center gap-1.5">
+                {card.tags.map((tag) => (
+                  <TagChip key={tag.id} tag={tag} className="py-1" />
+                ))}
+                <button
+                  ref={tagButtonRef}
+                  type="button"
+                  onClick={() => {
+                    // Sắp gắn / gỡ nhãn -> lần tải chi tiết đang chờ không được ghi đè tags optimistic
+                    editedRef.current = true;
+                    setTagPickerOpen((open) => !open);
+                  }}
+                  aria-expanded={tagPickerOpen}
+                  aria-haspopup="dialog"
+                  aria-label="Quản lý nhãn"
+                  title="Quản lý nhãn"
+                  className={cn(
+                    'flex items-center gap-1 rounded-md bg-gray-100 text-sm font-medium text-gray-700 hover:bg-gray-200',
+                    card.tags.length > 0 ? 'p-1.5' : 'px-2.5 py-1',
+                    tagPickerOpen && 'bg-gray-200',
+                  )}
+                >
+                  <Plus className="size-4" aria-hidden />
+                  {card.tags.length === 0 && 'Thêm nhãn'}
+                </button>
+
+                {tagPickerOpen && (
+                  <TagPicker
+                    cardId={cardId}
+                    anchorRef={tagButtonRef}
+                    onClose={closeTagPicker}
+                    onToggled={handleTagToggled}
+                  />
+                )}
+              </div>
+            </section>
 
             <section>
               <SectionTitle icon={<AlignLeft className="size-4 text-gray-500" aria-hidden />}>Mô tả</SectionTitle>
