@@ -26,11 +26,14 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
-import { AlertCircle, ArrowLeft, X } from 'lucide-react';
+import { AlertCircle, X } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { getBoardColor, getBoardTone } from '@/lib/boardTheme';
+import { cn } from '@/lib/utils';
 import { useBoardStore } from '@/store/useBoardStore';
 import type { CardWithTags, ListWithCards } from '@/types';
+import { BoardHeader } from './BoardHeader';
 import { BoardLoading } from './BoardLoading';
 import { CardDetailModal } from './CardDetailModal';
 import { getDragType, type DragItemType } from './dnd';
@@ -287,29 +290,22 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
 
   const activeList = active?.type === 'list' ? lists.find((l) => l.id === active.id) : undefined;
   const activeCard = active?.type === 'card' ? cardsById.get(active.id) : undefined;
+  const boardColor = getBoardColor(board.background);
+  const tone = getBoardTone(board.background);
   // Card không còn trên board (bị xoá / lưu trữ / tải lại) -> tự gỡ modal
   const selectedCardId = openCardId && cardsById.has(openCardId) ? openCardId : null;
 
   return (
-    <div className="flex h-dvh flex-col bg-gray-100">
-      <header className="flex shrink-0 items-center gap-3 px-4 py-3">
-        <Link
-          href="/"
-          aria-label="Về danh sách board"
-          className="rounded-md p-1.5 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
-        >
-          <ArrowLeft className="size-5" aria-hidden />
-        </Link>
-        <div className="min-w-0">
-          <h1 className="truncate text-lg font-bold text-gray-900">{board.title}</h1>
-          {board.description && <p className="truncate text-sm text-gray-600">{board.description}</p>}
-        </div>
-      </header>
+    <div
+      className={cn('flex h-dvh flex-col transition-colors', !boardColor && 'bg-gray-100')}
+      style={boardColor ? { backgroundColor: boardColor } : undefined}
+    >
+      <BoardHeader board={board} tone={tone} />
 
       {actionError && (
         <div
           role="alert"
-          className="mx-4 mb-2 flex shrink-0 items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200"
+          className="mx-4 my-2 flex shrink-0 items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200"
         >
           <AlertCircle className="size-4 shrink-0" aria-hidden />
           <span className="flex-1">{actionError}</span>
@@ -331,7 +327,7 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
         onDragCancel={resetDrag}
       >
         {/* Cuộn ngang toàn board; mỗi list tự cuộn dọc bên trong */}
-        <div className="flex min-h-0 flex-1 items-start gap-3 overflow-x-auto px-4 pb-4">
+        <div className="flex min-h-0 flex-1 items-start gap-3 overflow-x-auto px-4 pb-4 pt-3">
           <SortableContext items={listIds} strategy={horizontalListSortingStrategy}>
             {lists.map((list) => (
               <KanbanList
@@ -343,7 +339,8 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
             ))}
           </SortableContext>
 
-          <div className="w-72 shrink-0 rounded-xl bg-gray-200/70 p-2">
+          {/* Trên nền màu: nền trắng mờ để chữ xám của form vẫn đủ tương phản */}
+          <div className={cn('w-72 shrink-0 rounded-xl p-2', boardColor ? 'bg-white/75' : 'bg-gray-200/70')}>
             <InlineAddForm
               label="Thêm danh sách"
               placeholder="Nhập tiêu đề danh sách..."

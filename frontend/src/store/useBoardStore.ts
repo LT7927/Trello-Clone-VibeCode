@@ -10,6 +10,7 @@ import type {
   MoveCardPayload,
   MoveListPayload,
   PositionUpdate,
+  UpdateBoardPayload,
   UpdateCardPayload,
 } from '@/types';
 
@@ -180,7 +181,21 @@ export interface BoardState {
   editCard: (cardId: string, payload: UpdateCardPayload) => Promise<boolean>;
   /** Xoá card khỏi board ngay; lỗi -> đưa card về đúng vị trí cũ */
   deleteCard: (cardId: string) => Promise<boolean>;
+
+  // ---------- Board ----------
+  /**
+   * Sửa title / description / background ngay trên UI; lỗi -> trả lại giá trị cũ
+   * (chỉ những field chưa bị sửa tiếp). Title rỗng -> false, không gọi API.
+   */
+  updateBoard: (payload: BoardChanges) => Promise<boolean>;
+  /** Lưu trữ board hiện tại. KHÔNG optimistic: true -> UI chuyển về trang chủ; lỗi -> actionError */
+  archiveBoard: () => Promise<boolean>;
+  /** Xoá vĩnh viễn board hiện tại. true -> UI chuyển về trang chủ; lỗi -> actionError */
+  deleteBoard: () => Promise<boolean>;
 }
+
+/** Các field nội dung của board sửa được trên trang board (lưu trữ dùng archiveBoard) */
+export type BoardChanges = Pick<UpdateBoardPayload, 'title' | 'description' | 'background'>;
 
 const initialState = {
   board: null,
@@ -699,5 +714,88 @@ export const useBoardStore = create<BoardState>()((set, get) => {
     },
 
     deleteCard: (cardId) => removeCardOptimistic(cardId, () => boardApi.deleteCard(cardId)),
+
+    // ============================================================
+    // Board
+    // ============================================================
+
+    updateBoard: async (payload) => {
+      const board = get().board;
+      if (!board) return false;
+
+      // Chuẩn hoá giống Backend (trim, chuỗi rỗng -> null) để so sánh "có đổi không" chính xác
+      const changes: Record<string, string | null> = {};
+      if (payload.title !== undefined) {
+        const title = payload.title.trim();
+        if (!title) return false;
+        if (title !== board.title) changes.title = title;
+      }
+      for (const key of ['description', 'background'] as const) {
+        if (payload[key] === undefined) continue;
+        const value = payload[key]?.trim() || null;
+        if (value !== board[key]) changes[key] = value;
+      }
+      const keys = Object.keys(changes) as (keyof BoardChanges)[];
+      if (keys.length === 0) return true; // Không có gì thay đổi -> không gọi API
+
+      const boardId = board.id;
+      const patchBoard = (fields: Partial<BoardDetails>) =>
+        set((state) => (state.board?.id === boardId ? { board: { ...state.board, ...fields } } : {}));
+
+      /** Ghi `source[key]` vào những field VẪN giữ giá trị optimistic của lần sửa này */
+      const settle = (source: Pick<BoardDetails, keyof BoardChanges>, extra: Partial<BoardDetails> = {}) => {
+        const current = get().board;
+        if (current?.id !== boardId) return; // Đã rời board
+        const fields: Partial<BoardDetails> = { ...extra };
+        for (const key of keys) {
+          if (current[key] === changes[key]) fields[key] = source[key] as never;
+        }
+        patchBoard(fields);
+      };
+
+      const previous = { title: board.title, description: board.description, background: board.background };
+      patchBoard(changes);
+
+      try {
+        const { data } = await boardApi.updateBoard(boardId, changes);
+        settle(data, { updatedAt: data.updatedAt });
+        return true;
+      } catch (error) {
+        settle(previous);
+        if (get().board?.id === boardId) set({ actionError: getErrorMessage(error) });
+        return false;
+      }
+    },
+
+    archiveBoard: async () => {
+      const board = get().board;
+      if (!board) return false;
+      try {
+        const { data } = await boardApi.updateBoard(board.id, { isArchived: true });
+        set((state) =>
+          state.board?.id === board.id
+            ? { board: { ...state.board, isArchived: data.isArchived, updatedAt: data.updatedAt } }
+            : {},
+        );
+        return true;
+      } catch (error) {
+        if (get().board?.id === board.id) set({ actionError: getErrorMessage(error) });
+        return false;
+      }
+    },
+
+    deleteBoard: async () => {
+      const board = get().board;
+      if (!board) return false;
+      try {
+        await boardApi.deleteBoard(board.id);
+        return true;
+      } catch (error) {
+        // 404: board đã không còn -> kết quả cuối cùng vẫn đúng
+        if (isApiError(error) && error.isNotFound) return true;
+        if (get().board?.id === board.id) set({ actionError: getErrorMessage(error) });
+        return false;
+      }
+    },
   };
 });
