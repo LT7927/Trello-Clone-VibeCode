@@ -32,6 +32,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useBoardStore } from '@/store/useBoardStore';
 import type { CardWithTags, ListWithCards } from '@/types';
 import { BoardLoading } from './BoardLoading';
+import { CardDetailModal } from './CardDetailModal';
 import { getDragType, type DragItemType } from './dnd';
 import { InlineAddForm } from './InlineAddForm';
 import { CardPreview } from './KanbanCard';
@@ -88,6 +89,10 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
   const [active, setActive] = useState<ActiveDrag | null>(null);
   const [cardOrder, setCardOrder] = useState<CardOrder | null>(null);
   const lastOverId = useRef<UniqueIdentifier | null>(null);
+
+  // ---------- Modal chi tiết card ----------
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
+  const closeCardModal = useCallback(() => setOpenCardId(null), []);
   const recentlyMovedToNewList = useRef(false);
 
   // Sau khi card đổi list, layout dịch chuyển -> bỏ qua 1 frame collision để tránh nhảy qua lại
@@ -282,6 +287,8 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
 
   const activeList = active?.type === 'list' ? lists.find((l) => l.id === active.id) : undefined;
   const activeCard = active?.type === 'card' ? cardsById.get(active.id) : undefined;
+  // Card không còn trên board (bị xoá / lưu trữ / tải lại) -> tự gỡ modal
+  const selectedCardId = openCardId && cardsById.has(openCardId) ? openCardId : null;
 
   return (
     <div className="flex h-dvh flex-col bg-gray-100">
@@ -327,7 +334,12 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
         <div className="flex min-h-0 flex-1 items-start gap-3 overflow-x-auto px-4 pb-4">
           <SortableContext items={listIds} strategy={horizontalListSortingStrategy}>
             {lists.map((list) => (
-              <KanbanList key={list.id} list={list} cards={cardsByList[list.id]} />
+              <KanbanList
+                key={list.id}
+                list={list}
+                cards={cardsByList[list.id]}
+                onOpenCard={setOpenCardId}
+              />
             ))}
           </SortableContext>
 
@@ -346,6 +358,11 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
           {activeCard && <CardPreview card={activeCard} className="rotate-2 cursor-grabbing shadow-lg" />}
         </DragOverlay>
       </DndContext>
+
+      {/* key: đổi card -> mount lại modal, state (nháp, lịch sử) không bị lẫn giữa các card */}
+      {selectedCardId && (
+        <CardDetailModal key={selectedCardId} cardId={selectedCardId} onClose={closeCardModal} />
+      )}
     </div>
   );
 }

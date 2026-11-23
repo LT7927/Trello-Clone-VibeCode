@@ -52,10 +52,15 @@ export function CardPreview({ card, className }: { card: CardWithTags; className
 interface KanbanCardProps {
   card: CardWithTags;
   listId: string;
+  /** Mở modal chi tiết. Nên là hàm ổn định (setState) để không phá memo. */
+  onOpen: (cardId: string) => void;
 }
 
-/** Card kéo được. Kéo trên toàn bộ thẻ (sensor có ngưỡng nên click vẫn hoạt động). */
-export const KanbanCard = memo(function KanbanCard({ card, listId }: KanbanCardProps) {
+/**
+ * Card kéo được. Kéo trên toàn bộ thẻ (MouseSensor cần di chuyển > 5px mới kéo -> click = mở chi tiết).
+ * Bàn phím: Enter -> mở chi tiết, Space -> bắt đầu kéo bằng bàn phím.
+ */
+export const KanbanCard = memo(function KanbanCard({ card, listId, onOpen }: KanbanCardProps) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { type: 'card', listId } satisfies CardDragData,
@@ -72,6 +77,19 @@ export const KanbanCard = memo(function KanbanCard({ card, listId }: KanbanCardP
       className={cn('cursor-grab touch-manipulation active:cursor-grabbing', isDragging && 'opacity-40')}
       {...attributes}
       {...listeners}
+      aria-label={`Mở chi tiết thẻ ${card.title}`}
+      onClick={() => {
+        if (!isDragging) onOpen(card.id);
+      }}
+      onKeyDown={(event) => {
+        // Không chuyển Enter cho KeyboardSensor -> Enter chỉ mở modal, Space vẫn kéo được
+        if (event.key === 'Enter' && !isDragging) {
+          event.preventDefault();
+          onOpen(card.id);
+          return;
+        }
+        listeners?.onKeyDown?.(event);
+      }}
     >
       <CardPreview card={card} className={cn(!isDragging && 'hover:ring-gray-900/20')} />
     </div>

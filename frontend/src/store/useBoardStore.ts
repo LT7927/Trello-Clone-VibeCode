@@ -56,13 +56,40 @@ function getErrorMessage(error: unknown): string {
   return 'Đã xảy ra lỗi không xác định';
 }
 
-function findCard(board: BoardDetails | null, cardId: string): CardWithTags | null {
-  if (!board) return null;
-  for (const list of board.lists) {
+function findCardIn(lists: ListWithCards[], cardId: string): CardWithTags | null {
+  for (const list of lists) {
     const card = list.cards.find((c) => c.id === cardId);
     if (card) return card;
   }
   return null;
+}
+
+export function findCard(board: BoardDetails | null, cardId: string): CardWithTags | null {
+  return board ? findCardIn(board.lists, cardId) : null;
+}
+
+/** Sửa field của 1 card. Không tìm thấy card -> trả lại nguyên mảng (giữ tham chiếu). */
+function patchCardIn(lists: ListWithCards[], cardId: string, fields: CardChanges): ListWithCards[] {
+  if (!lists.some((l) => l.cards.some((c) => c.id === cardId))) return lists;
+  return lists.map((l) =>
+    l.cards.some((c) => c.id === cardId)
+      ? { ...l, cards: l.cards.map((c) => (c.id === cardId ? { ...c, ...fields } : c)) }
+      : l,
+  );
+}
+
+function removeCardIn(lists: ListWithCards[], cardId: string): ListWithCards[] {
+  if (!lists.some((l) => l.cards.some((c) => c.id === cardId))) return lists;
+  return lists.map((l) =>
+    l.cards.some((c) => c.id === cardId) ? { ...l, cards: l.cards.filter((c) => c.id !== cardId) } : l,
+  );
+}
+
+/** Đưa card về list của nó, sắp theo position -> đúng vị trí cũ. List không còn / card đã có -> bỏ qua. */
+function insertCardIn(lists: ListWithCards[], card: CardWithTags): ListWithCards[] {
+  const target = lists.find((l) => l.id === card.listId);
+  if (!target || findCardIn(lists, card.id)) return lists;
+  return lists.map((l) => (l === target ? { ...l, cards: [...l.cards, card].sort(byPosition) } : l));
 }
 
 /** Các field client được phép sửa qua updateCard (không đổi vị trí — dùng move) */
@@ -146,7 +173,13 @@ export interface BoardState {
   /** Xoá list (kèm card) khỏi board ngay; lỗi -> đưa list về đúng vị trí cũ */
   deleteList: (listId: string) => Promise<boolean>;
   createCard: (listId: string, title: string) => Promise<boolean>;
+  /**
+   * Sửa field ngay trên UI; lỗi -> trả lại giá trị cũ (chỉ những field chưa bị sửa tiếp).
+   * `isArchived: true` -> gỡ card khỏi board ngay; lỗi -> đưa card về đúng vị trí cũ.
+   */
   editCard: (cardId: string, payload: UpdateCardPayload) => Promise<boolean>;
+  /** Xoá card khỏi board ngay; lỗi -> đưa card về đúng vị trí cũ */
+  deleteCard: (cardId: string) => Promise<boolean>;
 }
 
 const initialState = {
@@ -202,6 +235,51 @@ export const useBoardStore = create<BoardState>()((set, get) => {
       if (current?.id === board.id && !current.lists.some((l) => l.id === listId)) {
         get().addList(removed); // addList sắp theo position -> về đúng chỗ cũ, giữ nguyên card
       }
+      set({ actionError: getErrorMessage(error) });
+      return false;
+    }
+  };
+
+  /** Sửa field của card trên board VÀ trong moveSnapshot -> rollback kéo thả không làm mất thay đổi */
+  const patchCard = (cardId: string, fields: CardChanges) =>
+    set((state) => ({
+      board: state.board
+        ? { ...state.board, lists: patchCardIn(state.board.lists, cardId, fields) }
+        : state.board,
+      moveSnapshot: state.moveSnapshot ? patchCardIn(state.moveSnapshot, cardId, fields) : state.moveSnapshot,
+    }));
+
+  /** Luồng chung cho archive / delete card: gỡ card ngay (cả khỏi snapshot), API lỗi thì đưa lại */
+  const removeCardOptimistic = async (cardId: string, request: () => Promise<unknown>) => {
+    const { board, moveSnapshot } = get();
+    const removed = findCard(board, cardId);
+    if (!board || !removed) return false;
+    // Bản trong snapshot có thể ở list / position khác (card vừa được kéo, server chưa xác nhận)
+    const snapshotCard = moveSnapshot ? findCardIn(moveSnapshot, cardId) : null;
+
+    set((state) => ({
+      board: state.board ? { ...state.board, lists: removeCardIn(state.board.lists, cardId) } : state.board,
+      // Gỡ cả khỏi snapshot -> rollback kéo thả sau đó không làm card "sống lại"
+      moveSnapshot: state.moveSnapshot ? removeCardIn(state.moveSnapshot, cardId) : state.moveSnapshot,
+    }));
+
+    try {
+      await request();
+      return true;
+    } catch (error) {
+      // 404: card đã không còn trên server -> kết quả cuối cùng vẫn đúng, không khôi phục
+      if (isApiError(error) && error.isNotFound) return true;
+
+      set((state) => {
+        if (state.board?.id !== board.id) return {}; // Đã chuyển sang board khác
+        return {
+          board: { ...state.board, lists: insertCardIn(state.board.lists, removed) },
+          // Vẫn còn lượt kéo chờ -> đưa card vào snapshot để rollback sau đó không làm mất card
+          moveSnapshot: state.moveSnapshot
+            ? insertCardIn(state.moveSnapshot, snapshotCard ?? removed)
+            : state.moveSnapshot,
+        };
+      });
       set({ actionError: getErrorMessage(error) });
       return false;
     }
@@ -580,22 +658,46 @@ export const useBoardStore = create<BoardState>()((set, get) => {
     },
 
     editCard: async (cardId, payload) => {
+      if (payload.isArchived) {
+        return removeCardOptimistic(cardId, () => boardApi.updateCard(cardId, payload));
+      }
+
       const previous = findCard(get().board, cardId);
       if (!previous) return false;
 
-      get().updateCard(cardId, payload);
+      const keys = (Object.keys(payload) as (keyof UpdateCardPayload)[]).filter(
+        (key) => payload[key] !== undefined,
+      );
+      if (keys.length === 0) return true;
+
+      patchCard(cardId, payload);
+
+      /**
+       * Ghi `source[key]` vào những field VẪN đang giữ giá trị optimistic của lần sửa này.
+       * Field đã bị user sửa tiếp trong lúc chờ (vd: bấm toggle 2 lần liền) -> giữ giá trị mới nhất.
+       */
+      const settle = (source: CardWithTags | Card, extra: CardChanges = {}) => {
+        const current = findCard(get().board, cardId);
+        if (!current) return;
+        const fields: Record<string, unknown> = { ...extra };
+        for (const key of keys) {
+          if (current[key] === payload[key]) fields[key] = source[key];
+        }
+        patchCard(cardId, fields as CardChanges);
+      };
 
       try {
         const { data } = await boardApi.updateCard(cardId, payload);
-        get().updateCard(cardId, toCardChanges(data));
+        // Chỉ chốt các field đã gửi (không lấy listId / position để không giật card đang kéo thả)
+        settle(data, { updatedAt: data.updatedAt });
         return true;
       } catch (error) {
-        // Card vẫn còn -> khôi phục field; đã bị gỡ (archive) -> thêm lại nguyên trạng
-        if (findCard(get().board, cardId)) get().updateCard(cardId, toCardChanges(previous));
-        else get().addCard(previous);
+        settle(previous);
         set({ actionError: getErrorMessage(error) });
         return false;
       }
     },
+
+    deleteCard: (cardId) => removeCardOptimistic(cardId, () => boardApi.deleteCard(cardId)),
   };
 });

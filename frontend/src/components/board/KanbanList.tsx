@@ -241,13 +241,14 @@ interface KanbanListProps {
   list: List;
   /** Card cần hiển thị — có thể là bản xem trước khi đang kéo card giữa các list */
   cards: CardWithTags[];
+  onOpenCard: (cardId: string) => void;
 }
 
 /**
  * Một cột. Bản thân cột là sortable (kéo bằng header) và đồng thời là droppable
  * cho card (cần khi list rỗng). Card bên trong nằm trong SortableContext riêng của cột.
  */
-export const KanbanList = memo(function KanbanList({ list, cards }: KanbanListProps) {
+export const KanbanList = memo(function KanbanList({ list, cards, onOpenCard }: KanbanListProps) {
   const createCard = useBoardStore((state) => state.createCard);
   const cardIds = useMemo(() => cards.map((card) => card.id), [cards]);
 
@@ -291,7 +292,7 @@ export const KanbanList = memo(function KanbanList({ list, cards }: KanbanListPr
         {/* min-h giữ vùng thả cho list rỗng */}
         <div className="flex min-h-2 flex-col gap-2 overflow-y-auto px-2 pb-1">
           {cards.map((card) => (
-            <KanbanCard key={card.id} card={card} listId={list.id} />
+            <KanbanCard key={card.id} card={card} listId={list.id} onOpen={onOpenCard} />
           ))}
         </div>
       </SortableContext>
