@@ -1,12 +1,13 @@
-import type { CardWithTags, Tag } from '@/types';
+import type { CardPriority, CardWithTags, Tag } from '@/types';
 
 /**
  * Bộ lọc card phía client (không gọi API).
  *
- * 3 tiêu chí kết hợp AND; trong cùng 1 tiêu chí các lựa chọn kết hợp OR:
- * - keyword : chứa trong title hoặc description (không phân biệt hoa thường, không phân biệt dấu).
- * - tags    : card có ít nhất 1 tag đã chọn, HOẶC (noTags) card không có tag nào.
- * - statuses: 'incomplete' | 'completed' | 'overdue' (quá hạn = có dueDate < now và chưa hoàn thành).
+ * 4 tiêu chí kết hợp AND; trong cùng 1 tiêu chí các lựa chọn kết hợp OR:
+ * - keyword   : chứa trong title hoặc description (không phân biệt hoa thường, không phân biệt dấu).
+ * - tags      : card có ít nhất 1 tag đã chọn, HOẶC (noTags) card không có tag nào.
+ * - statuses  : 'incomplete' | 'completed' | 'overdue' (quá hạn = có dueDate < now và chưa hoàn thành).
+ * - priorities: card có mức độ ưu tiên nằm trong các mức đã chọn.
  */
 
 export const CARD_STATUS_FILTERS = [
@@ -23,9 +24,16 @@ export interface CardFilter {
   /** Lựa chọn "Không có nhãn" */
   noTags: boolean;
   statuses: CardStatusFilter[];
+  priorities: CardPriority[];
 }
 
-export const EMPTY_CARD_FILTER: CardFilter = { keyword: '', tagIds: [], noTags: false, statuses: [] };
+export const EMPTY_CARD_FILTER: CardFilter = {
+  keyword: '',
+  tagIds: [],
+  noTags: false,
+  statuses: [],
+  priorities: [],
+};
 
 /** Chữ thường + bỏ dấu tiếng Việt: "Làm Đẹp" -> "lam dep" */
 export function normalizeSearchText(value: string): string {
@@ -53,7 +61,8 @@ export function countActiveFilters(filter: CardFilter): number {
     (normalizeSearchText(filter.keyword) ? 1 : 0) +
     filter.tagIds.length +
     (filter.noTags ? 1 : 0) +
-    filter.statuses.length
+    filter.statuses.length +
+    filter.priorities.length
   );
 }
 
@@ -76,6 +85,7 @@ export function createCardMatcher(filter: CardFilter, now: number): (card: CardW
   const tagIds = new Set(filter.tagIds);
   const filterByTags = tagIds.size > 0 || filter.noTags;
   const statuses = new Set(filter.statuses);
+  const priorities = new Set(filter.priorities);
 
   return (card) => {
     if (keyword) {
@@ -96,6 +106,8 @@ export function createCardMatcher(filter: CardFilter, now: number): (card: CardW
         (statuses.has('overdue') && isCardOverdue(card, now));
       if (!matchesStatus) return false;
     }
+
+    if (priorities.size > 0 && !priorities.has(card.priority)) return false;
 
     return true;
   };

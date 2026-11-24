@@ -51,6 +51,9 @@ export interface List {
   updatedAt: ISODateString;
 }
 
+export const CARD_PRIORITIES = ['low', 'medium', 'high'] as const;
+export type CardPriority = (typeof CARD_PRIORITIES)[number];
+
 export interface Card {
   id: string;
   listId: string;
@@ -59,6 +62,8 @@ export interface Card {
   /** Số thực, sắp xếp tăng dần trong list. Server tự tính, client không gửi lên. */
   position: number;
   dueDate: ISODateString | null;
+  /** Mặc định 'medium' (Backend) */
+  priority: CardPriority;
   isCompleted: boolean;
   isArchived: boolean;
   createdAt: ISODateString;
@@ -177,12 +182,15 @@ export interface CreateCardPayload {
   description?: string | null;
   /** Chuỗi ISO 8601 */
   dueDate?: ISODateString | null;
+  /** Không gửi -> server gán 'medium' */
+  priority?: CardPriority;
 }
 
 export interface UpdateCardPayload {
   title?: string;
   description?: string | null;
   dueDate?: ISODateString | null;
+  priority?: CardPriority;
   isCompleted?: boolean;
   isArchived?: boolean;
 }

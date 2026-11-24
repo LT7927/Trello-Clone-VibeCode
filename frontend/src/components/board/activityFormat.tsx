@@ -10,8 +10,10 @@ import {
   Trash2,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { isCardPriority } from '@/lib/cardPriority';
 import { isHexColor } from '@/lib/tags';
 import type { ActivityLog } from '@/types';
+import { PriorityBadge } from './PriorityBadge';
 import { TagChip } from './TagPicker';
 
 /**
@@ -92,6 +94,7 @@ const CARD_FIELD_LABELS: Record<string, string> = {
   title: 'tiêu đề',
   description: 'mô tả',
   dueDate: 'ngày hết hạn',
+  priority: 'độ ưu tiên',
 };
 
 const BOARD_FIELD_LABELS: Record<string, string> = {
@@ -112,6 +115,28 @@ function Quote({ children }: { children: ReactNode }) {
 function ActivityTag({ name, color }: { name: string; color: string | null }) {
   if (!color || !isHexColor(color)) return <Quote>{name}</Quote>;
   return <TagChip tag={{ name, color }} className="mx-0.5 align-middle shadow-none" />;
+}
+
+/** Badge mức ưu tiên đúng màu; giá trị lạ -> trích dẫn thường */
+function ActivityPriority({ value }: { value: string }) {
+  if (!isCardPriority(value)) return <Quote>{value}</Quote>;
+  return <PriorityBadge priority={value} className="mx-0.5 align-middle" />;
+}
+
+/** ", đổi độ ưu tiên từ [Thấp] thành [Cao]" — null nếu metadata thiếu old/new */
+function priorityChange(metadata: Metadata): ReactNode {
+  const oldPriority = metaString(metadata, 'oldPriority');
+  const newPriority = metaString(metadata, 'newPriority');
+  if (!newPriority) return null;
+  return oldPriority ? (
+    <>
+      độ ưu tiên từ <ActivityPriority value={oldPriority} /> thành <ActivityPriority value={newPriority} />
+    </>
+  ) : (
+    <>
+      độ ưu tiên thành <ActivityPriority value={newPriority} />
+    </>
+  );
 }
 
 /** "thẻ" (scope card) hoặc "thẻ “Tên thẻ”" (scope board, nếu metadata có tiêu đề) */
@@ -241,18 +266,32 @@ export function describeActivity(activity: ActivityLog, scope: ActivityScope = '
       const oldTitle = metaString(metadata, 'oldTitle');
       const newTitle = metaString(metadata, 'newTitle');
       const changed = metaStringArray(metadata, 'changedFields');
-      const others = changed.filter((f) => f !== 'title').map((f) => CARD_FIELD_LABELS[f] ?? f);
+      // Có old/new priority -> mô tả riêng, không gộp vào danh sách "cập nhật ..."
+      const priorityText = priorityChange(metadata);
+      const listed = priorityText ? changed.filter((f) => f !== 'priority') : changed;
+      const others = listed.filter((f) => f !== 'title').map((f) => CARD_FIELD_LABELS[f] ?? f);
 
       if (oldTitle && newTitle) {
         return (
           <>
             {scope === 'board' ? 'Đã đổi tên thẻ' : 'Đã đổi tiêu đề'} từ <Quote>{oldTitle}</Quote> thành{' '}
             <Quote>{newTitle}</Quote>
+            {priorityText && <>, đổi {priorityText}</>}
             {others.length > 0 && `, đồng thời cập nhật ${joinVietnamese(others)}`}
           </>
         );
       }
-      const labels = changed.map((f) => CARD_FIELD_LABELS[f] ?? f);
+
+      const labels = listed.map((f) => CARD_FIELD_LABELS[f] ?? f);
+      if (priorityText) {
+        return (
+          <>
+            Đã đổi {priorityText}
+            {scope === 'board' && <> của {card}</>}
+            {labels.length > 0 && `, đồng thời cập nhật ${joinVietnamese(labels)}`}
+          </>
+        );
+      }
       if (labels.length === 0) return <>Đã cập nhật {card}</>;
       return scope === 'board' ? (
         <>

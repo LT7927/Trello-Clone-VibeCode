@@ -757,6 +757,7 @@ export const useBoardStore = create<BoardState>()((set, get) => {
         description: null,
         position: positionBetween(last?.position ?? null, null),
         dueDate: null,
+        priority: 'medium',
         isCompleted: false,
         isArchived: false,
         createdAt: now,

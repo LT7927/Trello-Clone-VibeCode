@@ -8,6 +8,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Circle,
+  Flag,
   Loader2,
   Plus,
   RotateCw,
@@ -25,11 +26,12 @@ import {
   type MouseEvent,
   type ReactNode,
 } from 'react';
+import { PRIORITY_META } from '@/lib/cardPriority';
 import { cn } from '@/lib/utils';
 import { isApiError } from '@/lib/axios';
 import * as boardApi from '@/services/api';
 import { findCard, useBoardStore } from '@/store/useBoardStore';
-import type { CardDetails, UpdateCardPayload } from '@/types';
+import { CARD_PRIORITIES, type CardDetails, type CardPriority, type UpdateCardPayload } from '@/types';
 import { ActivityEntry } from './activityFormat';
 import { TagChip, TagPicker } from './TagPicker';
 
@@ -273,6 +275,51 @@ function DueDateEditor({
   );
 }
 
+/** 3 nút chọn độ ưu tiên (radiogroup). Bấm lại mức đang chọn -> không làm gì. */
+function PriorityEditor({
+  priority,
+  onChange,
+}: {
+  priority: CardPriority;
+  onChange: (priority: CardPriority) => void;
+}) {
+  const labelId = useId();
+
+  return (
+    <div>
+      <p id={labelId} className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-gray-600">
+        <Flag className="size-3.5" aria-hidden />
+        Độ ưu tiên
+      </p>
+      <div role="radiogroup" aria-labelledby={labelId} className="flex gap-1">
+        {CARD_PRIORITIES.map((value) => {
+          const meta = PRIORITY_META[value];
+          const selected = value === priority;
+          return (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => {
+                if (!selected) onChange(value);
+              }}
+              className={cn(
+                'rounded-md px-2.5 py-1 text-sm font-medium ring-1',
+                selected
+                  ? meta.activeClass
+                  : 'bg-white text-gray-600 ring-gray-200 hover:bg-gray-50 hover:text-gray-900',
+              )}
+            >
+              {meta.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SectionTitle({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
     <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-800">
@@ -344,6 +391,7 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
               title: data.title,
               description: data.description,
               dueDate: data.dueDate,
+              priority: data.priority,
               isCompleted: data.isCompleted,
               isArchived: data.isArchived,
               tags: data.tags,
@@ -554,6 +602,8 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
                 now={now}
                 onChange={(dueDate) => save({ dueDate })}
               />
+
+              <PriorityEditor priority={card.priority} onChange={(priority) => save({ priority })} />
             </div>
 
             <section>

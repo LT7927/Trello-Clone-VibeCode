@@ -7,6 +7,7 @@ import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import type { CardWithTags } from '@/types';
 import type { CardDragData } from './dnd';
+import { PriorityBadge } from './PriorityBadge';
 
 const dueDateFormatter = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit' });
 
@@ -34,17 +35,16 @@ export function CardPreview({ card, className }: { card: CardWithTags; className
 
       <p className={cn('break-words', card.isCompleted && 'text-gray-500 line-through')}>{card.title}</p>
 
-      {(card.dueDate || card.isCompleted) && (
-        <div className="mt-1.5 flex items-center gap-2 text-xs text-gray-500">
-          {card.isCompleted && <CheckCircle2 className="size-3.5 text-green-600" aria-label="Đã hoàn thành" />}
-          {card.dueDate && (
-            <span className="flex items-center gap-1">
-              <CalendarClock className="size-3.5" aria-hidden />
-              {dueDateFormatter.format(new Date(card.dueDate))}
-            </span>
-          )}
-        </div>
-      )}
+      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+        <PriorityBadge priority={card.priority} />
+        {card.isCompleted && <CheckCircle2 className="size-3.5 text-green-600" aria-label="Đã hoàn thành" />}
+        {card.dueDate && (
+          <span className="flex items-center gap-1">
+            <CalendarClock className="size-3.5" aria-hidden />
+            {dueDateFormatter.format(new Date(card.dueDate))}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

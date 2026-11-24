@@ -10,8 +10,9 @@ import {
   type CardFilter,
   type CardStatusFilter,
 } from '@/lib/cardFilter';
+import { PRIORITY_META } from '@/lib/cardPriority';
 import { cn } from '@/lib/utils';
-import type { Tag } from '@/types';
+import { CARD_PRIORITIES, type CardPriority, type Tag } from '@/types';
 import { TagChip } from './TagPicker';
 
 /**
@@ -63,7 +64,8 @@ export function BoardFilter({ tone, tags, filter, onChange }: BoardFilterProps) 
   const panelId = useId();
 
   /** Số lựa chọn trong popover (từ khoá đã hiện sẵn trong ô tìm kiếm nên không tính) */
-  const popoverCount = filter.tagIds.length + (filter.noTags ? 1 : 0) + filter.statuses.length;
+  const popoverCount =
+    filter.tagIds.length + (filter.noTags ? 1 : 0) + filter.statuses.length + filter.priorities.length;
   const isActive = isCardFilterActive(filter);
 
   const update = (changes: Partial<CardFilter>) => onChange({ ...filter, ...changes });
@@ -197,6 +199,21 @@ export function BoardFilter({ tone, tags, filter, onChange }: BoardFilterProps) 
                   onChange={() => update({ statuses: toggle<CardStatusFilter>(filter.statuses, status.value) })}
                 >
                   {status.label}
+                </CheckboxRow>
+              ))}
+            </fieldset>
+
+            {/* ---------- Độ ưu tiên ---------- */}
+            <fieldset className="border-t border-gray-100 pt-2">
+              <legend className="float-left mb-1 w-full px-2 text-xs font-semibold text-gray-600">Độ ưu tiên</legend>
+              {[...CARD_PRIORITIES].reverse().map((priority) => (
+                <CheckboxRow
+                  key={priority}
+                  checked={filter.priorities.includes(priority)}
+                  onChange={() => update({ priorities: toggle<CardPriority>(filter.priorities, priority) })}
+                >
+                  <span className={cn('mr-2 size-2 shrink-0 rounded-full', PRIORITY_META[priority].dotClass)} aria-hidden />
+                  {PRIORITY_META[priority].label}
                 </CheckboxRow>
               ))}
             </fieldset>
