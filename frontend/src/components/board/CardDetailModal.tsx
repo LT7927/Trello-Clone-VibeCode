@@ -10,6 +10,7 @@ import {
   Circle,
   Flag,
   Loader2,
+  Pencil,
   Plus,
   RotateCw,
   Tags,
@@ -33,6 +34,7 @@ import * as boardApi from '@/services/api';
 import { findCard, useBoardStore } from '@/store/useBoardStore';
 import { CARD_PRIORITIES, type CardDetails, type CardPriority, type UpdateCardPayload } from '@/types';
 import { ActivityEntry } from './activityFormat';
+import { MarkdownContent } from './MarkdownContent';
 import { TagChip, TagPicker } from './TagPicker';
 
 /**
@@ -128,6 +130,14 @@ function TitleEditor({ title, onSave }: { title: string; onSave: (title: string)
   );
 }
 
+type DescriptionTab = 'write' | 'preview';
+
+/**
+ * Mô tả hỗ trợ Markdown (GFM).
+ * - Xem: render MarkdownContent; nút "Chỉnh sửa" hoặc click vào vùng mô tả để sửa
+ *   (trừ khi click vào link / đang bôi đen chữ).
+ * - Sửa: tab Viết (textarea) / Xem trước. Ctrl+Enter lưu, Escape huỷ — hoạt động ở cả 2 tab.
+ */
 function DescriptionEditor({
   description,
   onSave,
@@ -136,6 +146,13 @@ function DescriptionEditor({
   onSave: (description: string | null) => void;
 }) {
   const [draft, setDraft] = useState<string | null>(null); // null = chế độ xem
+  const [tab, setTab] = useState<DescriptionTab>('write');
+  const tabsId = useId();
+
+  const startEditing = () => {
+    setTab('write');
+    setDraft(description ?? '');
+  };
 
   const save = () => {
     if (draft === null) return;
@@ -144,9 +161,10 @@ function DescriptionEditor({
     if (value !== (description?.trim() || null)) onSave(value);
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+  /** Gắn ở khung sửa (bubble từ textarea / vùng xem trước) */
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
-      event.preventDefault();
+      event.preventDefault(); // Báo cho modal: Escape đã được xử lý
       setDraft(null);
     } else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
@@ -154,40 +172,116 @@ function DescriptionEditor({
     }
   };
 
+  /** Click vào vùng mô tả -> sửa; bỏ qua khi click link hoặc vừa bôi đen chữ để copy */
+  const handleViewClick = (event: MouseEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest('a')) return;
+    if (window.getSelection()?.toString()) return;
+    startEditing();
+  };
+
+  const editButton = (
+    <button
+      type="button"
+      onClick={startEditing}
+      className="ml-auto flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
+    >
+      <Pencil className="size-3.5" aria-hidden />
+      Chỉnh sửa
+    </button>
+  );
+
   if (draft === null) {
-    return description ? (
-      <button
-        type="button"
-        onClick={() => setDraft(description)}
-        title="Nhấn để sửa mô tả"
-        className="block w-full whitespace-pre-wrap break-words rounded-md px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-100"
-      >
-        {description}
-      </button>
-    ) : (
-      <button
-        type="button"
-        onClick={() => setDraft('')}
-        className="block w-full rounded-md bg-gray-100 px-3 py-3 text-left text-sm text-gray-500 hover:bg-gray-200"
-      >
-        Thêm mô tả chi tiết hơn...
-      </button>
+    return (
+      <section>
+        <SectionTitle
+          icon={<AlignLeft className="size-4 text-gray-500" aria-hidden />}
+          action={description ? editButton : undefined}
+        >
+          Mô tả
+        </SectionTitle>
+        {description ? (
+          <div
+            onClick={handleViewClick}
+            title="Nhấn để sửa mô tả"
+            className="cursor-text rounded-md px-3 py-2 hover:bg-gray-50"
+          >
+            <MarkdownContent content={description} />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={startEditing}
+            className="block w-full rounded-md bg-gray-100 px-3 py-3 text-left text-sm text-gray-500 hover:bg-gray-200"
+          >
+            Thêm mô tả chi tiết hơn...
+          </button>
+        )}
+      </section>
     );
   }
 
+  const tabClass = (value: DescriptionTab) =>
+    cn(
+      'rounded-md px-2.5 py-1 text-xs font-medium',
+      tab === value ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-900/10' : 'text-gray-600 hover:text-gray-900',
+    );
+
   return (
-    <div className="flex flex-col gap-2">
-      <textarea
-        autoFocus
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onKeyDown={handleKeyDown}
-        maxLength={DESCRIPTION_MAX}
-        placeholder="Thêm mô tả chi tiết hơn..."
-        aria-label="Mô tả thẻ"
-        className="field-sizing-content min-h-28 w-full resize-y rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
-      />
-      <div className="flex items-center gap-2">
+    <section>
+      <SectionTitle icon={<AlignLeft className="size-4 text-gray-500" aria-hidden />}>Mô tả</SectionTitle>
+      <div className="flex flex-col gap-2" onKeyDown={handleKeyDown}>
+        <div role="tablist" aria-label="Chế độ soạn mô tả" className="flex w-fit gap-1 rounded-lg bg-gray-100 p-0.5">
+          <button
+            type="button"
+            role="tab"
+            id={`${tabsId}-write`}
+            aria-selected={tab === 'write'}
+            aria-controls={`${tabsId}-panel`}
+            onClick={() => setTab('write')}
+            className={tabClass('write')}
+          >
+            Viết
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id={`${tabsId}-preview`}
+            aria-selected={tab === 'preview'}
+            aria-controls={`${tabsId}-panel`}
+            onClick={() => setTab('preview')}
+            className={tabClass('preview')}
+          >
+            Xem trước
+          </button>
+        </div>
+
+        <div id={`${tabsId}-panel`} role="tabpanel" aria-labelledby={`${tabsId}-${tab}`}>
+          {tab === 'write' ? (
+            <textarea
+              autoFocus
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              maxLength={DESCRIPTION_MAX}
+              placeholder="Thêm mô tả chi tiết hơn... (hỗ trợ Markdown: **đậm**, _nghiêng_, - [ ] việc cần làm, `code`, bảng...)"
+              aria-label="Mô tả thẻ"
+              className="field-sizing-content min-h-28 w-full resize-y rounded-md border border-gray-300 bg-white px-3 py-2 font-mono text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+            />
+          ) : (
+            // Focus được -> Ctrl+Enter / Escape vẫn hoạt động khi đang ở tab Xem trước
+            <div
+              tabIndex={0}
+              className="min-h-28 rounded-md border border-gray-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500/30"
+            >
+              {draft.trim() ? (
+                <MarkdownContent content={draft} />
+              ) : (
+                <p className="text-sm italic text-gray-400">Chưa có nội dung để xem trước.</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={save}
@@ -202,9 +296,10 @@ function DescriptionEditor({
         >
           Hủy
         </button>
-        <span className="ml-auto text-xs text-gray-400">Ctrl + Enter để lưu</span>
+          <span className="ml-auto text-xs text-gray-400">Ctrl + Enter để lưu · Esc để hủy</span>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -320,12 +415,19 @@ function PriorityEditor({
   );
 }
 
-function SectionTitle({ icon, children }: { icon: ReactNode; children: ReactNode }) {
-  return (
-    <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-800">
+function SectionTitle({ icon, children, action }: { icon: ReactNode; children: ReactNode; action?: ReactNode }) {
+  const heading = (
+    <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-800">
       {icon}
       {children}
     </h3>
+  );
+  if (!action) return <div className="mb-2">{heading}</div>;
+  return (
+    <div className="mb-2 flex items-center gap-2">
+      {heading}
+      {action}
+    </div>
   );
 }
 
@@ -645,10 +747,7 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
               </div>
             </section>
 
-            <section>
-              <SectionTitle icon={<AlignLeft className="size-4 text-gray-500" aria-hidden />}>Mô tả</SectionTitle>
-              <DescriptionEditor description={card.description} onSave={(description) => save({ description })} />
-            </section>
+            <DescriptionEditor description={card.description} onSave={(description) => save({ description })} />
 
             <section>
               <SectionTitle icon={<Activity className="size-4 text-gray-500" aria-hidden />}>
