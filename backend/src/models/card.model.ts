@@ -11,6 +11,10 @@ import type { List } from './list.model';
 import type { Tag } from './tag.model';
 import type { ActivityLog } from './activityLog.model';
 
+import { CARD_PRIORITIES, DEFAULT_CARD_PRIORITY, type CardPriority } from '../constants/cardPriority';
+
+export { CARD_PRIORITIES, type CardPriority };
+
 export class Card extends Model<InferAttributes<Card>, InferCreationAttributes<Card>> {
   declare id: CreationOptional<string>;
   /** Kéo card sang list khác = cập nhật listId + position */
@@ -22,6 +26,8 @@ export class Card extends Model<InferAttributes<Card>, InferCreationAttributes<C
   declare dueDate: CreationOptional<Date | null>;
   declare isCompleted: CreationOptional<boolean>;
   declare isArchived: CreationOptional<boolean>;
+  /** Mức độ ưu tiên, mặc định 'medium' */
+  declare priority: CreationOptional<CardPriority>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -67,6 +73,11 @@ Card.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    priority: {
+      type: DataTypes.ENUM(...CARD_PRIORITIES),
+      allowNull: false,
+      defaultValue: DEFAULT_CARD_PRIORITY,
     },
     createdAt: { type: DataTypes.DATE, allowNull: false },
     updatedAt: { type: DataTypes.DATE, allowNull: false },

@@ -16,6 +16,7 @@ import {
   nullableUuid,
   optionalBoolean,
   optionalDate,
+  optionalPriority,
   optionalString,
   optionalUuid,
   rejectFields,
@@ -26,11 +27,18 @@ import {
 const TITLE_MAX = 500;
 const DESCRIPTION_MAX = 10000;
 const RECENT_ACTIVITY_LIMIT = 20;
-const UPDATABLE_FIELDS = ['title', 'description', 'dueDate', 'isCompleted', 'isArchived'] as const;
+const UPDATABLE_FIELDS = [
+  'title',
+  'description',
+  'dueDate',
+  'priority',
+  'isCompleted',
+  'isArchived',
+] as const;
 /** listId / position chỉ được đổi qua API kéo thả card */
 const FORBIDDEN_FIELDS = ['listId', 'position'] as const;
 /** Các trường nội dung -> gộp vào 1 log CARD_UPDATED */
-const CONTENT_FIELDS: readonly string[] = ['title', 'description', 'dueDate'];
+const CONTENT_FIELDS: readonly string[] = ['title', 'description', 'dueDate', 'priority'];
 
 type ListIdParams = { listId: string };
 type IdParams = { id: string };
@@ -52,7 +60,8 @@ async function findCardWithBoardId(
 }
 
 /**
- * POST /api/lists/:listId/cards  body: { id?, title, description?, dueDate? }
+ * POST /api/lists/:listId/cards  body: { id?, title, description?, dueDate?, priority? }
+ * priority: 'low' | 'medium' | 'high', không gửi -> 'medium' (defaultValue của model).
  * position = MAX(position) của card trong list + 65536; list trống -> 65536.
  * Khoá dòng list để các request tạo card đồng thời trong cùng list chạy tuần tự
  * (tránh trùng position) và chặn list bị xoá giữa chừng.
@@ -69,6 +78,7 @@ export const createCard = asyncHandler<ListIdParams>(async (req, res) => {
     title: requiredString(body, 'title', TITLE_MAX),
     description: optionalString(body, 'description', DESCRIPTION_MAX, { nullable: true }),
     dueDate: optionalDate(body, 'dueDate'),
+    priority: optionalPriority(body, 'priority'),
   };
   const { listId } = req.params;
 
@@ -130,7 +140,7 @@ export const getCard = asyncHandler<IdParams>(async (req, res) => {
 });
 
 /**
- * PATCH /api/cards/:id  body: { title?, description?, dueDate?, isCompleted?, isArchived? }
+ * PATCH /api/cards/:id  body: { title?, description?, dueDate?, priority?, isCompleted?, isArchived? }
  * Không cho phép sửa listId / position (trả 400 nếu client gửi lên).
  */
 export const updateCard = asyncHandler<IdParams>(async (req, res) => {
@@ -144,6 +154,8 @@ export const updateCard = asyncHandler<IdParams>(async (req, res) => {
   if (description !== undefined) updates.description = description;
   const dueDate = optionalDate(body, 'dueDate');
   if (dueDate !== undefined) updates.dueDate = dueDate;
+  const priority = optionalPriority(body, 'priority');
+  if (priority !== undefined) updates.priority = priority;
   const isCompleted = optionalBoolean(body, 'isCompleted');
   if (isCompleted !== undefined) updates.isCompleted = isCompleted;
   const isArchived = optionalBoolean(body, 'isArchived');
@@ -158,6 +170,7 @@ export const updateCard = asyncHandler<IdParams>(async (req, res) => {
   const card = await sequelize.transaction(async (transaction) => {
     const { card: found, boardId } = await findCardWithBoardId(req.params.id, transaction);
     const oldTitle = found.title;
+    const oldPriority = found.priority;
 
     found.set(updates);
     const changed = found.changed() || [];
@@ -182,6 +195,10 @@ export const updateCard = asyncHandler<IdParams>(async (req, res) => {
             title: found.title,
             changedFields: contentFields,
             ...(contentFields.includes('title') && { oldTitle, newTitle: found.title }),
+            ...(contentFields.includes('priority') && {
+              oldPriority,
+              newPriority: found.priority,
+            }),
           },
         },
         transaction,

@@ -1,4 +1,5 @@
 import { AppError } from './AppError';
+import { CARD_PRIORITIES, type CardPriority } from '../constants/cardPriority';
 
 /**
  * Bộ kiểm tra input tối giản (chưa dùng thư viện).
@@ -125,6 +126,28 @@ export function requiredHexColor(body: Body, field: string): string {
 export function optionalHexColor(body: Body, field: string): string | undefined {
   if (body[field] === undefined) return undefined;
   return requiredHexColor(body, field);
+}
+
+/** Giá trị phải thuộc danh sách cho phép (không nhận null) */
+export function optionalEnum<T extends string>(
+  body: Body,
+  field: string,
+  allowed: readonly T[],
+): T | undefined {
+  const value = body[field];
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || !(allowed as readonly string[]).includes(value)) {
+    throw AppError.badRequest(`Trường "${field}" phải là một trong: ${allowed.join(', ')}`, {
+      field,
+      allowedValues: allowed,
+    });
+  }
+  return value as T;
+}
+
+/** Mức độ ưu tiên của card: 'low' | 'medium' | 'high' */
+export function optionalPriority(body: Body, field = 'priority'): CardPriority | undefined {
+  return optionalEnum(body, field, CARD_PRIORITIES);
 }
 
 /** Nhận chuỗi ISO 8601; null để xoá giá trị */
