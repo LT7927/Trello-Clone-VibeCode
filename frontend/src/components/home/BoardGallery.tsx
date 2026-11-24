@@ -53,13 +53,18 @@ function ArchivedBoardTile({ board, onRestore, onDelete }: ArchivedBoardTileProp
         role="alertdialog"
         aria-labelledby={confirmTitleId}
         onKeyDown={(event) => event.key === 'Escape' && setConfirming(false)}
-        className="flex min-h-28 flex-col justify-between gap-2 rounded-xl bg-white p-3 shadow-sm ring-1 ring-red-200"
+        className="flex min-h-28 flex-col justify-between gap-2 rounded-xl bg-white p-3 shadow-sm ring-1 ring-red-200 dark:bg-gray-900 dark:ring-red-900"
       >
         <div>
-          <p id={confirmTitleId} className="line-clamp-2 break-words text-sm font-semibold text-gray-900">
+          <p
+            id={confirmTitleId}
+            className="line-clamp-2 break-words text-sm font-semibold text-gray-900 dark:text-gray-100"
+          >
             Xóa vĩnh viễn “{board.title}”?
           </p>
-          <p className="mt-0.5 text-xs text-gray-600">Toàn bộ dữ liệu của board sẽ mất, không thể hoàn tác.</p>
+          <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400">
+            Toàn bộ dữ liệu của board sẽ mất, không thể hoàn tác.
+          </p>
         </div>
         <div className="flex gap-2">
           <button
@@ -73,7 +78,7 @@ function ArchivedBoardTile({ board, onRestore, onDelete }: ArchivedBoardTileProp
           <button
             type="button"
             onClick={() => setConfirming(false)}
-            className="rounded-md px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            className="rounded-md px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
           >
             Hủy
           </button>
@@ -194,7 +199,7 @@ export function BoardGallery() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div role="tablist" aria-label="Lọc board" className="flex w-fit gap-1 rounded-lg bg-gray-200 p-1">
+      <div role="tablist" aria-label="Lọc board" className="flex w-fit gap-1 rounded-lg bg-gray-200 p-1 dark:bg-gray-800">
         {TABS.map((tab) => (
           <button
             key={tab.view}
@@ -204,7 +209,9 @@ export function BoardGallery() {
             onClick={() => changeView(tab.view)}
             className={cn(
               'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-              view === tab.view ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
+              view === tab.view
+                ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100'
+                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100',
             )}
           >
             {tab.view === 'archived' && <Archive className="size-4" aria-hidden />}
@@ -216,7 +223,7 @@ export function BoardGallery() {
       {actionError && (
         <div
           role="alert"
-          className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200"
+          className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-900"
         >
           <AlertCircle className="size-4 shrink-0" aria-hidden />
           <span className="flex-1">{actionError}</span>
@@ -224,7 +231,7 @@ export function BoardGallery() {
             type="button"
             onClick={() => setActionError(null)}
             aria-label="Đóng thông báo"
-            className="rounded p-0.5 hover:bg-red-100"
+            className="rounded p-0.5 hover:bg-red-100 dark:hover:bg-red-900/40"
           >
             <X className="size-4" aria-hidden />
           </button>
@@ -257,7 +264,7 @@ function GalleryContent({ view, state, onRetry, onRestore, onDelete }: GalleryCo
     return (
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-busy="true" aria-label="Đang tải board">
         {Array.from({ length: 4 }, (_, index) => (
-          <li key={index} className="h-28 animate-pulse rounded-xl bg-gray-200" />
+          <li key={index} className="h-28 animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
         ))}
       </ul>
     );
@@ -265,9 +272,9 @@ function GalleryContent({ view, state, onRetry, onRestore, onDelete }: GalleryCo
 
   if (state.status === 'error') {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-xl bg-white px-6 py-12 text-center shadow-sm ring-1 ring-gray-900/5">
+      <div className="flex flex-col items-center gap-3 rounded-xl bg-white px-6 py-12 text-center shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-900 dark:ring-white/10">
         <AlertCircle className="size-8 text-red-500" aria-hidden />
-        <p className="text-sm text-gray-700">{state.message}</p>
+        <p className="text-sm text-gray-700 dark:text-gray-300">{state.message}</p>
         <button
           type="button"
           onClick={onRetry}
@@ -282,13 +289,13 @@ function GalleryContent({ view, state, onRetry, onRestore, onDelete }: GalleryCo
   if (view === 'archived') {
     if (state.boards.length === 0) {
       return (
-        <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-white/60 px-6 py-16 text-center">
-          <div className="rounded-full bg-gray-100 p-4">
-            <Archive className="size-8 text-gray-500" aria-hidden />
+        <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-white/60 px-6 py-16 text-center dark:border-gray-700 dark:bg-gray-900/60">
+          <div className="rounded-full bg-gray-100 p-4 dark:bg-gray-800">
+            <Archive className="size-8 text-gray-500 dark:text-gray-400" aria-hidden />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-gray-900">Không có board nào đã lưu trữ</h2>
-            <p className="mt-1 text-sm text-gray-600">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Không có board nào đã lưu trữ</h2>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
               Board được lưu trữ từ trang cài đặt board sẽ xuất hiện ở đây để bạn khôi phục hoặc xóa.
             </p>
           </div>
@@ -309,13 +316,13 @@ function GalleryContent({ view, state, onRetry, onRestore, onDelete }: GalleryCo
 
   if (state.boards.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-gray-300 bg-white/60 px-6 py-16 text-center">
-        <div className="rounded-full bg-blue-50 p-4">
-          <LayoutGrid className="size-8 text-blue-600" aria-hidden />
+      <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-gray-300 bg-white/60 px-6 py-16 text-center dark:border-gray-700 dark:bg-gray-900/60">
+        <div className="rounded-full bg-blue-50 p-4 dark:bg-blue-950/50">
+          <LayoutGrid className="size-8 text-blue-600 dark:text-blue-400" aria-hidden />
         </div>
         <div>
-          <h2 className="text-base font-semibold text-gray-900">Chưa có board nào</h2>
-          <p className="mt-1 text-sm text-gray-600">Tạo board đầu tiên để bắt đầu sắp xếp công việc.</p>
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Chưa có board nào</h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Tạo board đầu tiên để bắt đầu sắp xếp công việc.</p>
         </div>
         <CreateBoardForm variant="cta" />
       </div>
@@ -332,7 +339,7 @@ function GalleryContent({ view, state, onRetry, onRestore, onDelete }: GalleryCo
               href={`/boards/${board.id}`}
               style={{ backgroundColor: color }}
               className={cn(
-                'flex h-28 flex-col justify-between rounded-xl p-3 shadow-sm transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600',
+                'flex h-28 flex-col justify-between rounded-xl p-3 shadow-sm transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:ring-1 dark:ring-white/10 dark:focus-visible:outline-blue-400',
                 dark ? 'text-white' : 'text-gray-900',
               )}
             >

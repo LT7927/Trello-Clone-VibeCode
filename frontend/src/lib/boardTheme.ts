@@ -57,17 +57,22 @@ export function getBoardTone(background: string | null | undefined): BoardTone {
   return isDarkColor(color) ? 'dark' : 'light';
 }
 
-/** Class cho chữ / nút trên header board theo tông màu nền -> luôn đủ tương phản */
+/**
+ * Class cho chữ / nút trên header board theo tông màu nền -> luôn đủ tương phản.
+ * Chỉ tông 'default' (nền xám) đổi theo dark mode; board có màu giữ nguyên màu nền
+ * ở cả 2 chế độ nên 'dark' / 'light' dùng chung class (tính theo độ sáng của màu nền).
+ */
 export const HEADER_TONE_CLASSES: Record<
   BoardTone,
   { header: string; text: string; subtext: string; button: string; buttonActive: string }
 > = {
   default: {
     header: '',
-    text: 'text-gray-900',
-    subtext: 'text-gray-600',
-    button: 'text-gray-600 hover:bg-gray-200 hover:text-gray-900',
-    buttonActive: 'bg-black/10',
+    text: 'text-gray-900 dark:text-gray-100',
+    subtext: 'text-gray-600 dark:text-gray-400',
+    button:
+      'text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white',
+    buttonActive: 'bg-black/10 dark:bg-white/10',
   },
   dark: {
     header: 'bg-black/20',

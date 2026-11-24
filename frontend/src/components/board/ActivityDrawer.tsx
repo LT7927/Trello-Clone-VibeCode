@@ -21,6 +21,11 @@ import { ActivityEntry } from './activityFormat';
 
 const PAGE_SIZE = 20;
 
+const ICON_BUTTON_CLASS =
+  'rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100';
+const ALERT_CLASS =
+  'flex gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300';
+
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -189,7 +194,11 @@ export function ActivityDrawer({ boardId, onClose, onOpenCard }: ActivityDrawerP
   return (
     <div className="fixed inset-0 z-40">
       {/* Backdrop: click ra ngoài -> đóng */}
-      <div className="absolute inset-0 bg-gray-900/50 motion-safe:animate-fade-in" onClick={onClose} aria-hidden />
+      <div
+        className="absolute inset-0 bg-gray-900/50 motion-safe:animate-fade-in dark:bg-black/60"
+        onClick={onClose}
+        aria-hidden
+      />
 
       <div
         ref={panelRef}
@@ -198,12 +207,12 @@ export function ActivityDrawer({ boardId, onClose, onOpenCard }: ActivityDrawerP
         aria-labelledby={titleId}
         tabIndex={-1}
         onKeyDown={trapFocus}
-        className="absolute inset-y-0 right-0 flex w-full max-w-sm flex-col bg-white shadow-2xl outline-none motion-safe:animate-drawer-in"
+        className="absolute inset-y-0 right-0 flex w-full max-w-sm flex-col bg-white shadow-2xl outline-none motion-safe:animate-drawer-in dark:bg-gray-900 dark:ring-1 dark:ring-white/10"
       >
         {/* ---------- Header ---------- */}
-        <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-4 py-3">
-          <Activity className="size-5 text-gray-500" aria-hidden />
-          <h2 id={titleId} className="flex-1 text-base font-semibold text-gray-900">
+        <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+          <Activity className="size-5 text-gray-500 dark:text-gray-400" aria-hidden />
+          <h2 id={titleId} className="flex-1 text-base font-semibold text-gray-900 dark:text-gray-100">
             Hoạt động
           </h2>
           <button
@@ -212,16 +221,11 @@ export function ActivityDrawer({ boardId, onClose, onOpenCard }: ActivityDrawerP
             disabled={isRefreshing}
             aria-label="Làm mới lịch sử"
             title="Làm mới"
-            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
+            className={cn(ICON_BUTTON_CLASS, 'disabled:cursor-not-allowed disabled:opacity-60')}
           >
             <RotateCw className={cn('size-4', isRefreshing && 'animate-spin')} aria-hidden />
           </button>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Đóng lịch sử hoạt động"
-            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-          >
+          <button type="button" onClick={onClose} aria-label="Đóng lịch sử hoạt động" className={ICON_BUTTON_CLASS}>
             <X className="size-5" aria-hidden />
           </button>
         </div>
@@ -229,20 +233,20 @@ export function ActivityDrawer({ boardId, onClose, onOpenCard }: ActivityDrawerP
         {/* ---------- Nội dung ---------- */}
         <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3" aria-busy={isRefreshing}>
           {feed.status === 'loading' && (
-            <div className="flex items-center gap-2 px-2 py-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 px-2 py-2 text-sm text-gray-500 dark:text-gray-400">
               <Loader2 className="size-4 animate-spin" aria-hidden />
               Đang tải lịch sử...
             </div>
           )}
 
           {feed.status === 'error' && (
-            <div role="alert" className="mx-2 flex items-center gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div role="alert" className={cn(ALERT_CLASS, 'mx-2 items-center')}>
               <AlertCircle className="size-4 shrink-0" aria-hidden />
               <span className="flex-1">{feed.error}</span>
               <button
                 type="button"
                 onClick={refresh}
-                className="flex items-center gap-1 rounded px-2 py-0.5 font-medium hover:bg-red-100"
+                className="flex items-center gap-1 rounded px-2 py-0.5 font-medium hover:bg-red-100 dark:hover:bg-red-900/40"
               >
                 <RotateCw className="size-3.5" aria-hidden />
                 Thử lại
@@ -253,14 +257,14 @@ export function ActivityDrawer({ boardId, onClose, onOpenCard }: ActivityDrawerP
           {feed.status === 'ready' && (
             <>
               {feed.notice && (
-                <div role="alert" className="mx-2 mb-2 flex items-start gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+                <div role="alert" className={cn(ALERT_CLASS, 'mx-2 mb-2 items-start')}>
                   <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
                   <span className="flex-1">{feed.notice}</span>
                 </div>
               )}
 
               {feed.items.length === 0 ? (
-                <p className="px-2 py-2 text-sm text-gray-500">Chưa có hoạt động nào.</p>
+                <p className="px-2 py-2 text-sm text-gray-500 dark:text-gray-400">Chưa có hoạt động nào.</p>
               ) : (
                 <ol className="flex flex-col gap-0.5">
                   {feed.items.map((activity) => {
@@ -273,11 +277,11 @@ export function ActivityDrawer({ boardId, onClose, onOpenCard }: ActivityDrawerP
                             type="button"
                             onClick={() => onOpenCard(cardId)}
                             title="Mở thẻ"
-                            className="group flex w-full gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-gray-100 focus-visible:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                            className="group flex w-full gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-gray-100 focus-visible:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:hover:bg-gray-800 dark:focus-visible:bg-gray-800"
                           >
                             <ActivityEntry activity={activity} now={feed.loadedAt} scope="board" />
                             <ChevronRight
-                              className="ml-auto mt-1 size-4 shrink-0 text-gray-300 group-hover:text-gray-500"
+                              className="ml-auto mt-1 size-4 shrink-0 text-gray-300 group-hover:text-gray-500 dark:text-gray-600 dark:group-hover:text-gray-400"
                               aria-hidden
                             />
                           </button>
@@ -298,7 +302,7 @@ export function ActivityDrawer({ boardId, onClose, onOpenCard }: ActivityDrawerP
                     type="button"
                     onClick={loadMore}
                     disabled={feed.busy !== null}
-                    className="flex w-full items-center justify-center gap-2 rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex w-full items-center justify-center gap-2 rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                   >
                     {feed.busy === 'more' && <Loader2 className="size-4 animate-spin" aria-hidden />}
                     {feed.busy === 'more' ? 'Đang tải...' : 'Tải thêm'}
@@ -306,7 +310,9 @@ export function ActivityDrawer({ boardId, onClose, onOpenCard }: ActivityDrawerP
                 </div>
               ) : (
                 feed.items.length > 0 && (
-                  <p className="px-2 pt-3 text-center text-xs text-gray-400">Đã hiển thị toàn bộ lịch sử</p>
+                  <p className="px-2 pt-3 text-center text-xs text-gray-400 dark:text-gray-500">
+                    Đã hiển thị toàn bộ lịch sử
+                  </p>
                 )
               )}
             </>

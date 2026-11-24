@@ -11,7 +11,8 @@ import { stopDragPropagation, type ListDragData } from './dnd';
 import { InlineAddForm } from './InlineAddForm';
 import { CardPreview, KanbanCard } from './KanbanCard';
 
-const LIST_CLASS = 'flex max-h-full w-72 shrink-0 flex-col rounded-xl bg-gray-200';
+const LIST_CLASS =
+  'flex max-h-full w-72 shrink-0 flex-col rounded-xl bg-gray-200 dark:bg-gray-900 dark:ring-1 dark:ring-white/5';
 
 // ============================================================
 // Tiêu đề cột: click để sửa tên
@@ -73,7 +74,7 @@ function ListTitle({ listId, title }: { listId: string; title: string }) {
         {...stopDragPropagation}
         maxLength={255}
         aria-label="Tên danh sách"
-        className="min-w-0 flex-1 cursor-text rounded-md border border-blue-500 bg-white px-1.5 py-0.5 text-sm font-semibold text-gray-900 outline-none ring-2 ring-blue-500/30"
+        className="min-w-0 flex-1 cursor-text rounded-md border border-blue-500 bg-white px-1.5 py-0.5 text-sm font-semibold text-gray-900 outline-none ring-2 ring-blue-500/30 dark:bg-gray-800 dark:text-gray-100"
       />
     );
   }
@@ -83,7 +84,7 @@ function ListTitle({ listId, title }: { listId: string; title: string }) {
       type="button"
       onClick={startEditing}
       title="Nhấn để đổi tên"
-      className="min-w-0 flex-1 truncate rounded-md border border-transparent px-1.5 py-0.5 text-left text-sm font-semibold text-gray-800 hover:bg-gray-300/60"
+      className="min-w-0 flex-1 truncate rounded-md border border-transparent px-1.5 py-0.5 text-left text-sm font-semibold text-gray-800 hover:bg-gray-300/60 dark:text-gray-200 dark:hover:bg-gray-800"
     >
       {title}
     </button>
@@ -97,9 +98,9 @@ function ListTitle({ listId, title }: { listId: string; title: string }) {
 type MenuMode = 'closed' | 'menu' | 'confirm-delete';
 
 const MENU_PANEL_CLASS =
-  'absolute right-0 top-full z-20 mt-1 rounded-lg bg-white shadow-lg ring-1 ring-gray-900/10';
+  'absolute right-0 top-full z-20 mt-1 rounded-lg bg-white shadow-lg ring-1 ring-gray-900/10 dark:bg-gray-800 dark:ring-white/10';
 const MENU_ITEM_CLASS =
-  'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-100 focus-visible:bg-gray-100 focus-visible:outline-none';
+  'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-100 focus-visible:bg-gray-100 focus-visible:outline-none dark:hover:bg-gray-700 dark:focus-visible:bg-gray-700';
 
 /** Toàn bộ menu (nút + dropdown) chặn mousedown/touchstart -> không kích hoạt kéo cột */
 function ListActionsMenu({ listId, title, cardCount }: { listId: string; title: string; cardCount: number }) {
@@ -152,8 +153,8 @@ function ListActionsMenu({ listId, title, cardCount }: { listId: string; title: 
         aria-haspopup="menu"
         aria-expanded={mode !== 'closed'}
         className={cn(
-          'rounded-md p-1 text-gray-600 hover:bg-gray-300/70 hover:text-gray-900',
-          mode !== 'closed' && 'bg-gray-300/70 text-gray-900',
+          'rounded-md p-1 text-gray-600 hover:bg-gray-300/70 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100',
+          mode !== 'closed' && 'bg-gray-300/70 text-gray-900 dark:bg-gray-800 dark:text-gray-100',
         )}
       >
         <MoreHorizontal className="size-4" aria-hidden />
@@ -161,7 +162,7 @@ function ListActionsMenu({ listId, title, cardCount }: { listId: string; title: 
 
       {mode === 'menu' && (
         <div role="menu" aria-label="Thao tác với danh sách" className={cn(MENU_PANEL_CLASS, 'w-56 py-1')}>
-          <p className="border-b border-gray-100 px-3 pb-1.5 pt-1 text-center text-xs font-medium text-gray-500">
+          <p className="border-b border-gray-100 px-3 pb-1.5 pt-1 text-center text-xs font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400">
             Thao tác
           </p>
           <button
@@ -169,7 +170,7 @@ function ListActionsMenu({ listId, title, cardCount }: { listId: string; title: 
             role="menuitem"
             autoFocus
             onClick={handleArchive}
-            className={cn(MENU_ITEM_CLASS, 'text-gray-700')}
+            className={cn(MENU_ITEM_CLASS, 'text-gray-700 dark:text-gray-200')}
           >
             <Archive className="size-4" aria-hidden />
             Lưu trữ danh sách
@@ -178,7 +179,10 @@ function ListActionsMenu({ listId, title, cardCount }: { listId: string; title: 
             type="button"
             role="menuitem"
             onClick={() => setMode('confirm-delete')}
-            className={cn(MENU_ITEM_CLASS, 'text-red-600 hover:bg-red-50 focus-visible:bg-red-50')}
+            className={cn(
+              MENU_ITEM_CLASS,
+              'text-red-600 hover:bg-red-50 focus-visible:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/50 dark:focus-visible:bg-red-950/50',
+            )}
           >
             <Trash2 className="size-4" aria-hidden />
             Xóa danh sách
@@ -193,10 +197,10 @@ function ListActionsMenu({ listId, title, cardCount }: { listId: string; title: 
           aria-describedby={confirmDescId}
           className={cn(MENU_PANEL_CLASS, 'w-64 p-3')}
         >
-          <p id={confirmTitleId} className="break-words text-sm font-semibold text-gray-900">
+          <p id={confirmTitleId} className="break-words text-sm font-semibold text-gray-900 dark:text-gray-100">
             Xóa danh sách “{title}”?
           </p>
-          <p id={confirmDescId} className="mt-1 text-xs text-gray-600">
+          <p id={confirmDescId} className="mt-1 text-xs text-gray-600 dark:text-gray-400">
             {cardCount > 0 && `${cardCount} thẻ trong danh sách cũng sẽ bị xóa. `}
             Thao tác này không thể hoàn tác. Nếu chỉ muốn ẩn đi, hãy chọn “Lưu trữ”.
           </p>
@@ -212,7 +216,7 @@ function ListActionsMenu({ listId, title, cardCount }: { listId: string; title: 
             <button
               type="button"
               onClick={() => setMode('menu')}
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
             >
               Hủy
             </button>
@@ -226,8 +230,8 @@ function ListActionsMenu({ listId, title, cardCount }: { listId: string; title: 
 /** Bản sao tĩnh của list để hiển thị trong DragOverlay khi kéo list */
 export function ListPreview({ list, cards }: { list: List; cards: CardWithTags[] }) {
   return (
-    <div className={cn(LIST_CLASS, 'rotate-2 shadow-xl ring-1 ring-gray-900/10')}>
-      <div className="px-3 py-2.5 text-sm font-semibold text-gray-800">{list.title}</div>
+    <div className={cn(LIST_CLASS, 'rotate-2 shadow-xl ring-1 ring-gray-900/10 dark:ring-white/10')}>
+      <div className="px-3 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200">{list.title}</div>
       <div className="flex flex-col gap-2 overflow-hidden px-2 pb-2">
         {cards.map((card) => (
           <CardPreview key={card.id} card={card} />
@@ -291,7 +295,9 @@ export const KanbanList = memo(function KanbanList({ list, cards, onOpenCard, to
         <span
           className={cn(
             'shrink-0 rounded-full px-2 text-xs font-medium',
-            isFiltering ? 'bg-blue-100 text-blue-700' : 'bg-gray-300/70 text-gray-600',
+            isFiltering
+              ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+              : 'bg-gray-300/70 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
           )}
           title={isFiltering ? `${cards.length} / ${totalCards} thẻ khớp bộ lọc` : undefined}
         >
@@ -308,7 +314,7 @@ export const KanbanList = memo(function KanbanList({ list, cards, onOpenCard, to
             <KanbanCard key={card.id} card={card} listId={list.id} onOpen={onOpenCard} dragDisabled={isFiltering} />
           ))}
           {isFiltering && cards.length === 0 && (totalCards ?? 0) > 0 && (
-            <p className="px-1 py-1 text-center text-xs text-gray-500">Không có thẻ khớp bộ lọc</p>
+            <p className="px-1 py-1 text-center text-xs text-gray-500 dark:text-gray-400">Không có thẻ khớp bộ lọc</p>
           )}
         </div>
       </SortableContext>

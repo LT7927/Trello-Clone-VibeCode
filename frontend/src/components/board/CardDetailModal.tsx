@@ -51,6 +51,21 @@ import { TagChip, TagPicker } from './TagPicker';
 const TITLE_MAX = 500;
 const DESCRIPTION_MAX = 10_000;
 
+// ---------- Class dùng chung (sáng / tối) — modal nền gray-900 khi tối ----------
+const INPUT_CLASS =
+  'rounded-md border border-gray-300 bg-white text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500';
+const ICON_BUTTON_CLASS =
+  'rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100';
+/** Nút nền xám nhạt (Chỉnh sửa, Lưu trữ thẻ, Thêm nhãn...) */
+const SOFT_BUTTON_CLASS =
+  'rounded-md bg-gray-100 font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700';
+const GHOST_BUTTON_CLASS =
+  'rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800';
+const FIELD_LABEL_CLASS = 'mb-1 flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400';
+const SECTION_ICON_CLASS = 'size-4 text-gray-500 dark:text-gray-400';
+const ALERT_CLASS =
+  'flex items-center gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300';
+
 // ============================================================
 // Format ngày giờ
 // ============================================================
@@ -125,7 +140,7 @@ function TitleEditor({ title, onSave }: { title: string; onSave: (title: string)
       rows={1}
       maxLength={TITLE_MAX}
       aria-label="Tiêu đề thẻ"
-      className="field-sizing-content w-full resize-none rounded-md border border-transparent bg-transparent px-1.5 py-1 text-lg font-semibold text-gray-900 outline-none hover:bg-gray-100 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/30"
+      className="field-sizing-content w-full resize-none rounded-md border border-transparent bg-transparent px-1.5 py-1 text-lg font-semibold text-gray-900 outline-none hover:bg-gray-100 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/30 dark:text-gray-100 dark:hover:bg-gray-800 dark:focus:bg-gray-800"
     />
   );
 }
@@ -183,7 +198,7 @@ function DescriptionEditor({
     <button
       type="button"
       onClick={startEditing}
-      className="ml-auto flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
+      className={cn('ml-auto flex items-center gap-1 px-2 py-1 text-xs', SOFT_BUTTON_CLASS)}
     >
       <Pencil className="size-3.5" aria-hidden />
       Chỉnh sửa
@@ -194,7 +209,7 @@ function DescriptionEditor({
     return (
       <section>
         <SectionTitle
-          icon={<AlignLeft className="size-4 text-gray-500" aria-hidden />}
+          icon={<AlignLeft className={SECTION_ICON_CLASS} aria-hidden />}
           action={description ? editButton : undefined}
         >
           Mô tả
@@ -203,7 +218,7 @@ function DescriptionEditor({
           <div
             onClick={handleViewClick}
             title="Nhấn để sửa mô tả"
-            className="cursor-text rounded-md px-3 py-2 hover:bg-gray-50"
+            className="cursor-text rounded-md px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/60"
           >
             <MarkdownContent content={description} />
           </div>
@@ -211,7 +226,7 @@ function DescriptionEditor({
           <button
             type="button"
             onClick={startEditing}
-            className="block w-full rounded-md bg-gray-100 px-3 py-3 text-left text-sm text-gray-500 hover:bg-gray-200"
+            className="block w-full rounded-md bg-gray-100 px-3 py-3 text-left text-sm text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
           >
             Thêm mô tả chi tiết hơn...
           </button>
@@ -223,14 +238,20 @@ function DescriptionEditor({
   const tabClass = (value: DescriptionTab) =>
     cn(
       'rounded-md px-2.5 py-1 text-xs font-medium',
-      tab === value ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-900/10' : 'text-gray-600 hover:text-gray-900',
+      tab === value
+        ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-900/10 dark:bg-gray-700 dark:text-gray-100 dark:ring-white/10'
+        : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100',
     );
 
   return (
     <section>
-      <SectionTitle icon={<AlignLeft className="size-4 text-gray-500" aria-hidden />}>Mô tả</SectionTitle>
+      <SectionTitle icon={<AlignLeft className={SECTION_ICON_CLASS} aria-hidden />}>Mô tả</SectionTitle>
       <div className="flex flex-col gap-2" onKeyDown={handleKeyDown}>
-        <div role="tablist" aria-label="Chế độ soạn mô tả" className="flex w-fit gap-1 rounded-lg bg-gray-100 p-0.5">
+        <div
+          role="tablist"
+          aria-label="Chế độ soạn mô tả"
+          className="flex w-fit gap-1 rounded-lg bg-gray-100 p-0.5 dark:bg-gray-800"
+        >
           <button
             type="button"
             role="tab"
@@ -264,39 +285,35 @@ function DescriptionEditor({
               maxLength={DESCRIPTION_MAX}
               placeholder="Thêm mô tả chi tiết hơn... (hỗ trợ Markdown: **đậm**, _nghiêng_, - [ ] việc cần làm, `code`, bảng...)"
               aria-label="Mô tả thẻ"
-              className="field-sizing-content min-h-28 w-full resize-y rounded-md border border-gray-300 bg-white px-3 py-2 font-mono text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+              className={cn('field-sizing-content min-h-28 w-full resize-y px-3 py-2 font-mono', INPUT_CLASS)}
             />
           ) : (
             // Focus được -> Ctrl+Enter / Escape vẫn hoạt động khi đang ở tab Xem trước
             <div
               tabIndex={0}
-              className="min-h-28 rounded-md border border-gray-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500/30"
+              className="min-h-28 rounded-md border border-gray-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-gray-700 dark:bg-gray-900"
             >
               {draft.trim() ? (
                 <MarkdownContent content={draft} />
               ) : (
-                <p className="text-sm italic text-gray-400">Chưa có nội dung để xem trước.</p>
+                <p className="text-sm italic text-gray-400 dark:text-gray-500">Chưa có nội dung để xem trước.</p>
               )}
             </div>
           )}
         </div>
 
         <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={save}
-          className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          Lưu
-        </button>
-        <button
-          type="button"
-          onClick={() => setDraft(null)}
-          className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
-        >
-          Hủy
-        </button>
-          <span className="ml-auto text-xs text-gray-400">Ctrl + Enter để lưu · Esc để hủy</span>
+          <button
+            type="button"
+            onClick={save}
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Lưu
+          </button>
+          <button type="button" onClick={() => setDraft(null)} className={GHOST_BUTTON_CLASS}>
+            Hủy
+          </button>
+          <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">Ctrl + Enter để lưu · Esc để hủy</span>
         </div>
       </div>
     </section>
@@ -322,7 +339,7 @@ function DueDateEditor({
 
   return (
     <div>
-      <label htmlFor={inputId} className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-gray-600">
+      <label htmlFor={inputId} className={FIELD_LABEL_CLASS}>
         <CalendarClock className="size-3.5" aria-hidden />
         Ngày hết hạn
       </label>
@@ -342,7 +359,7 @@ function DueDateEditor({
             if (iso && toDateInputValue(iso) !== toDateInputValue(dueDate)) onChange(iso);
           }}
           onBlur={() => setDraft(null)}
-          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+          className={cn('px-2 py-1', INPUT_CLASS)}
         />
         {dueDate && (
           <button
@@ -353,19 +370,27 @@ function DueDateEditor({
             }}
             aria-label="Xóa ngày hết hạn"
             title="Xóa ngày hết hạn"
-            className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            className={cn('p-1', ICON_BUTTON_CLASS)}
           >
             <X className="size-4" aria-hidden />
           </button>
         )}
         {isOverdue && (
-          <span className="rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700">Quá hạn</span>
+          <span className="rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/60 dark:text-red-300">
+            Quá hạn
+          </span>
         )}
         {dueDate && isCompleted && (
-          <span className="rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-700">Đã xong</span>
+          <span className="rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950/60 dark:text-green-300">
+            Đã xong
+          </span>
         )}
       </div>
-      {dueDate && <p className="mt-1 text-xs capitalize text-gray-500">{dueDateFormatter.format(new Date(dueDate))}</p>}
+      {dueDate && (
+        <p className="mt-1 text-xs capitalize text-gray-500 dark:text-gray-400">
+          {dueDateFormatter.format(new Date(dueDate))}
+        </p>
+      )}
     </div>
   );
 }
@@ -382,7 +407,7 @@ function PriorityEditor({
 
   return (
     <div>
-      <p id={labelId} className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-gray-600">
+      <p id={labelId} className={FIELD_LABEL_CLASS}>
         <Flag className="size-3.5" aria-hidden />
         Độ ưu tiên
       </p>
@@ -403,7 +428,7 @@ function PriorityEditor({
                 'rounded-md px-2.5 py-1 text-sm font-medium ring-1',
                 selected
                   ? meta.activeClass
-                  : 'bg-white text-gray-600 ring-gray-200 hover:bg-gray-50 hover:text-gray-900',
+                  : 'bg-white text-gray-600 ring-gray-200 hover:bg-gray-50 hover:text-gray-900 dark:bg-gray-900 dark:text-gray-400 dark:ring-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-100',
               )}
             >
               {meta.label}
@@ -417,7 +442,7 @@ function PriorityEditor({
 
 function SectionTitle({ icon, children, action }: { icon: ReactNode; children: ReactNode; action?: ReactNode }) {
   const heading = (
-    <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+    <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
       {icon}
       {children}
     </h3>
@@ -620,7 +645,7 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-gray-900/60 p-4 sm:py-12"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-gray-900/60 p-4 sm:py-12 dark:bg-black/70"
       onMouseDown={handleBackdropMouseDown}
       onClick={handleBackdropClick}
     >
@@ -631,17 +656,17 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
         aria-labelledby={titleId}
         tabIndex={-1}
         onKeyDown={trapFocus}
-        className="relative w-full max-w-3xl rounded-xl bg-white shadow-2xl outline-none"
+        className="relative w-full max-w-3xl rounded-xl bg-white shadow-2xl outline-none dark:bg-gray-900 dark:ring-1 dark:ring-white/10"
       >
         {/* ---------- Header ---------- */}
-        <div className="flex items-start gap-2 border-b border-gray-100 px-4 pb-3 pt-4 sm:px-6">
+        <div className="flex items-start gap-2 border-b border-gray-100 px-4 pb-3 pt-4 sm:px-6 dark:border-gray-800">
           <button
             type="button"
             onClick={() => save({ isCompleted: !card.isCompleted })}
             aria-pressed={card.isCompleted}
             aria-label={card.isCompleted ? 'Bỏ đánh dấu hoàn thành' : 'Đánh dấu hoàn thành'}
             title={card.isCompleted ? 'Bỏ đánh dấu hoàn thành' : 'Đánh dấu hoàn thành'}
-            className="mt-1.5 shrink-0 rounded-full text-gray-400 hover:text-green-600"
+            className="mt-1.5 shrink-0 rounded-full text-gray-400 hover:text-green-600 dark:text-gray-500 dark:hover:text-green-500"
           >
             {card.isCompleted ? (
               <CheckCircle2 className="size-5 text-green-600" aria-hidden />
@@ -656,8 +681,9 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
             </h2>
             <TitleEditor title={card.title} onSave={(title) => save({ title })} />
             {parentListTitle && (
-              <p className="px-1.5 text-xs text-gray-500">
-                trong danh sách <span className="font-medium text-gray-700">{parentListTitle}</span>
+              <p className="px-1.5 text-xs text-gray-500 dark:text-gray-400">
+                trong danh sách{' '}
+                <span className="font-medium text-gray-700 dark:text-gray-300">{parentListTitle}</span>
               </p>
             )}
           </div>
@@ -666,7 +692,7 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
             type="button"
             onClick={onClose}
             aria-label="Đóng"
-            className="shrink-0 rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            className={cn('shrink-0 p-1.5', ICON_BUTTON_CLASS)}
           >
             <X className="size-5" aria-hidden />
           </button>
@@ -677,7 +703,7 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
           <div className="flex min-w-0 flex-col gap-6">
             <div className="flex flex-wrap gap-x-8 gap-y-4">
               <div>
-                <p className="mb-1 text-xs font-semibold text-gray-600">Trạng thái</p>
+                <p className={FIELD_LABEL_CLASS}>Trạng thái</p>
                 <button
                   type="button"
                   onClick={() => save({ isCompleted: !card.isCompleted })}
@@ -685,8 +711,8 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
                   className={cn(
                     'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium ring-1',
                     card.isCompleted
-                      ? 'bg-green-50 text-green-700 ring-green-200 hover:bg-green-100'
-                      : 'bg-gray-50 text-gray-700 ring-gray-200 hover:bg-gray-100',
+                      ? 'bg-green-50 text-green-700 ring-green-200 hover:bg-green-100 dark:bg-green-950/50 dark:text-green-300 dark:ring-green-800 dark:hover:bg-green-900/50'
+                      : 'bg-gray-50 text-gray-700 ring-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700 dark:hover:bg-gray-700',
                   )}
                 >
                   {card.isCompleted ? (
@@ -709,7 +735,7 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
             </div>
 
             <section>
-              <SectionTitle icon={<Tags className="size-4 text-gray-500" aria-hidden />}>Nhãn</SectionTitle>
+              <SectionTitle icon={<Tags className={SECTION_ICON_CLASS} aria-hidden />}>Nhãn</SectionTitle>
               <div className="relative flex flex-wrap items-center gap-1.5">
                 {card.tags.map((tag) => (
                   <TagChip key={tag.id} tag={tag} className="py-1" />
@@ -727,9 +753,10 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
                   aria-label="Quản lý nhãn"
                   title="Quản lý nhãn"
                   className={cn(
-                    'flex items-center gap-1 rounded-md bg-gray-100 text-sm font-medium text-gray-700 hover:bg-gray-200',
+                    'flex items-center gap-1 text-sm',
+                    SOFT_BUTTON_CLASS,
                     card.tags.length > 0 ? 'p-1.5' : 'px-2.5 py-1',
-                    tagPickerOpen && 'bg-gray-200',
+                    tagPickerOpen && 'bg-gray-200 dark:bg-gray-700',
                   )}
                 >
                   <Plus className="size-4" aria-hidden />
@@ -750,7 +777,7 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
             <DescriptionEditor description={card.description} onSave={(description) => save({ description })} />
 
             <section>
-              <SectionTitle icon={<Activity className="size-4 text-gray-500" aria-hidden />}>
+              <SectionTitle icon={<Activity className={SECTION_ICON_CLASS} aria-hidden />}>
                 Lịch sử hoạt động
               </SectionTitle>
               <ActivityFeed details={details} onRetry={retry} />
@@ -759,11 +786,15 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
 
           {/* ---------- Cột thao tác ---------- */}
           <aside className="flex flex-col gap-2">
-            <p className="text-xs font-semibold text-gray-600">Thao tác</p>
+            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Thao tác</p>
             {confirmDelete ? (
-              <div role="alertdialog" aria-label="Xác nhận xóa thẻ" className="rounded-lg bg-red-50 p-3 ring-1 ring-red-200">
-                <p className="text-sm font-semibold text-red-800">Xóa thẻ này?</p>
-                <p className="mt-1 text-xs text-red-700">
+              <div
+                role="alertdialog"
+                aria-label="Xác nhận xóa thẻ"
+                className="rounded-lg bg-red-50 p-3 ring-1 ring-red-200 dark:bg-red-950/40 dark:ring-red-900"
+              >
+                <p className="text-sm font-semibold text-red-800 dark:text-red-200">Xóa thẻ này?</p>
+                <p className="mt-1 text-xs text-red-700 dark:text-red-300">
                   Thao tác này không thể hoàn tác. Nếu chỉ muốn ẩn đi, hãy chọn “Lưu trữ”.
                 </p>
                 <div className="mt-3 flex gap-2">
@@ -778,7 +809,7 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
                   <button
                     type="button"
                     onClick={() => setConfirmDelete(false)}
-                    className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-red-100"
+                    className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-red-100 dark:text-gray-300 dark:hover:bg-red-900/40"
                   >
                     Hủy
                   </button>
@@ -789,7 +820,7 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
                 <button
                   type="button"
                   onClick={handleArchive}
-                  className="flex items-center gap-2 rounded-md bg-gray-100 px-3 py-1.5 text-left text-sm font-medium text-gray-700 hover:bg-gray-200"
+                  className={cn('flex items-center gap-2 px-3 py-1.5 text-left text-sm', SOFT_BUTTON_CLASS)}
                 >
                   <Archive className="size-4" aria-hidden />
                   Lưu trữ thẻ
@@ -797,7 +828,7 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
                 <button
                   type="button"
                   onClick={() => setConfirmDelete(true)}
-                  className="flex items-center gap-2 rounded-md bg-red-50 px-3 py-1.5 text-left text-sm font-medium text-red-700 hover:bg-red-100"
+                  className="flex items-center gap-2 rounded-md bg-red-50 px-3 py-1.5 text-left text-sm font-medium text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/40"
                 >
                   <Trash2 className="size-4" aria-hidden />
                   Xóa thẻ
@@ -814,7 +845,7 @@ export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
 function ActivityFeed({ details, onRetry }: { details: DetailsState; onRetry: () => void }) {
   if (details.status === 'loading') {
     return (
-      <div className="flex items-center gap-2 py-2 text-sm text-gray-500">
+      <div className="flex items-center gap-2 py-2 text-sm text-gray-500 dark:text-gray-400">
         <Loader2 className="size-4 animate-spin" aria-hidden />
         Đang tải lịch sử...
       </div>
@@ -823,13 +854,13 @@ function ActivityFeed({ details, onRetry }: { details: DetailsState; onRetry: ()
 
   if (details.status === 'error') {
     return (
-      <div role="alert" className="flex items-center gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+      <div role="alert" className={ALERT_CLASS}>
         <AlertCircle className="size-4 shrink-0" aria-hidden />
         <span className="flex-1">{details.error}</span>
         <button
           type="button"
           onClick={onRetry}
-          className="flex items-center gap-1 rounded px-2 py-0.5 font-medium hover:bg-red-100"
+          className="flex items-center gap-1 rounded px-2 py-0.5 font-medium hover:bg-red-100 dark:hover:bg-red-900/40"
         >
           <RotateCw className="size-3.5" aria-hidden />
           Thử lại
@@ -839,7 +870,9 @@ function ActivityFeed({ details, onRetry }: { details: DetailsState; onRetry: ()
   }
 
   const { activities } = details.data;
-  if (activities.length === 0) return <p className="text-sm text-gray-500">Chưa có hoạt động nào.</p>;
+  if (activities.length === 0) {
+    return <p className="text-sm text-gray-500 dark:text-gray-400">Chưa có hoạt động nào.</p>;
+  }
 
   return (
     <ol className="flex flex-col gap-3">

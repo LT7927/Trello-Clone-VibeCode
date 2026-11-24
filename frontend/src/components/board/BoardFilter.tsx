@@ -37,7 +37,7 @@ function CheckboxRow({
   children: ReactNode;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-100">
+    <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">
       <input
         type="checkbox"
         checked={checked}
@@ -96,7 +96,7 @@ export function BoardFilter({ tone, tags, filter, onChange }: BoardFilterProps) 
       {/* ---------- Ô tìm kiếm nhanh ---------- */}
       <div className="relative">
         <Search
-          className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-gray-500"
+          className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-gray-500 dark:text-gray-400"
           aria-hidden
         />
         <input
@@ -113,14 +113,14 @@ export function BoardFilter({ tone, tags, filter, onChange }: BoardFilterProps) 
           maxLength={KEYWORD_MAX}
           placeholder="Tìm thẻ..."
           aria-label="Tìm thẻ theo tiêu đề hoặc mô tả"
-          className="w-32 rounded-md bg-white/90 py-1.5 pl-7 pr-7 text-sm text-gray-900 shadow-sm outline-none ring-1 ring-gray-900/10 placeholder:text-gray-500 focus:bg-white focus:ring-2 focus:ring-blue-500 sm:w-52 [&::-webkit-search-cancel-button]:hidden"
+          className="w-32 rounded-md bg-white/90 py-1.5 pl-7 pr-7 text-sm text-gray-900 shadow-sm outline-none ring-1 ring-gray-900/10 placeholder:text-gray-500 focus:bg-white focus:ring-2 focus:ring-blue-500 sm:w-52 dark:bg-gray-800/90 dark:text-gray-100 dark:ring-white/15 dark:placeholder:text-gray-400 dark:focus:bg-gray-800 [&::-webkit-search-cancel-button]:hidden"
         />
         {filter.keyword && (
           <button
             type="button"
             onClick={() => update({ keyword: '' })}
             aria-label="Xóa từ khóa"
-            className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-500 hover:bg-gray-200 hover:text-gray-900"
+            className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-500 hover:bg-gray-200 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
           >
             <X className="size-3.5" aria-hidden />
           </button>
@@ -157,15 +157,15 @@ export function BoardFilter({ tone, tags, filter, onChange }: BoardFilterProps) 
             id={panelId}
             role="dialog"
             aria-label="Lọc thẻ"
-            className="absolute right-0 top-full z-30 mt-1 flex max-h-[calc(100dvh-5rem)] w-72 max-w-[calc(100vw-2rem)] flex-col gap-3 overflow-y-auto rounded-lg bg-white p-3 shadow-xl ring-1 ring-gray-900/10"
+            className="absolute right-0 top-full z-30 mt-1 flex max-h-[calc(100dvh-5rem)] w-72 max-w-[calc(100vw-2rem)] flex-col gap-3 overflow-y-auto rounded-lg bg-white p-3 shadow-xl ring-1 ring-gray-900/10 dark:bg-gray-900 dark:ring-white/10"
           >
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-900">Lọc thẻ</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Lọc thẻ</p>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Đóng bộ lọc"
-                className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
               >
                 <X className="size-4" aria-hidden />
               </button>
@@ -173,9 +173,9 @@ export function BoardFilter({ tone, tags, filter, onChange }: BoardFilterProps) 
 
             {/* ---------- Nhãn ---------- */}
             <fieldset>
-              <legend className="mb-1 px-2 text-xs font-semibold text-gray-600">Nhãn</legend>
+              <legend className="mb-1 px-2 text-xs font-semibold text-gray-600 dark:text-gray-400">Nhãn</legend>
               <CheckboxRow checked={filter.noTags} onChange={() => update({ noTags: !filter.noTags })}>
-                <span className="italic text-gray-600">Không có nhãn</span>
+                <span className="italic text-gray-600 dark:text-gray-400">Không có nhãn</span>
               </CheckboxRow>
               {tags.map((tag) => (
                 <CheckboxRow
@@ -186,12 +186,16 @@ export function BoardFilter({ tone, tags, filter, onChange }: BoardFilterProps) 
                   <TagChip tag={tag} className="shadow-none" />
                 </CheckboxRow>
               ))}
-              {tags.length === 0 && <p className="px-2 py-1 text-xs text-gray-500">Board chưa có nhãn nào.</p>}
+              {tags.length === 0 && (
+                <p className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400">Board chưa có nhãn nào.</p>
+              )}
             </fieldset>
 
             {/* ---------- Trạng thái / hạn chót ---------- */}
-            <fieldset className="border-t border-gray-100 pt-2">
-              <legend className="float-left mb-1 w-full px-2 text-xs font-semibold text-gray-600">Trạng thái</legend>
+            <fieldset className="border-t border-gray-100 pt-2 dark:border-gray-800">
+              <legend className="float-left mb-1 w-full px-2 text-xs font-semibold text-gray-600 dark:text-gray-400">
+                Trạng thái
+              </legend>
               {CARD_STATUS_FILTERS.map((status) => (
                 <CheckboxRow
                   key={status.value}
@@ -204,8 +208,10 @@ export function BoardFilter({ tone, tags, filter, onChange }: BoardFilterProps) 
             </fieldset>
 
             {/* ---------- Độ ưu tiên ---------- */}
-            <fieldset className="border-t border-gray-100 pt-2">
-              <legend className="float-left mb-1 w-full px-2 text-xs font-semibold text-gray-600">Độ ưu tiên</legend>
+            <fieldset className="border-t border-gray-100 pt-2 dark:border-gray-800">
+              <legend className="float-left mb-1 w-full px-2 text-xs font-semibold text-gray-600 dark:text-gray-400">
+                Độ ưu tiên
+              </legend>
               {[...CARD_PRIORITIES].reverse().map((priority) => (
                 <CheckboxRow
                   key={priority}
@@ -218,7 +224,7 @@ export function BoardFilter({ tone, tags, filter, onChange }: BoardFilterProps) 
               ))}
             </fieldset>
 
-            <p className="px-2 text-xs text-gray-500">
+            <p className="px-2 text-xs text-gray-500 dark:text-gray-400">
               Thẻ phải khớp tất cả tiêu chí; trong cùng một mục chỉ cần khớp một lựa chọn.
             </p>
 
@@ -226,7 +232,7 @@ export function BoardFilter({ tone, tags, filter, onChange }: BoardFilterProps) 
               type="button"
               onClick={() => onChange(EMPTY_CARD_FILTER)}
               disabled={!isActive}
-              className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
             >
               Xóa bộ lọc
             </button>

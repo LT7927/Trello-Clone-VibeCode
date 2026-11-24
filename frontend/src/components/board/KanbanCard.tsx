@@ -16,7 +16,7 @@ export function CardPreview({ card, className }: { card: CardWithTags; className
   return (
     <div
       className={cn(
-        'rounded-lg bg-white px-3 py-2 text-sm text-gray-900 shadow-sm ring-1 ring-gray-900/5',
+        'rounded-lg bg-white px-3 py-2 text-sm text-gray-900 shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-800 dark:text-gray-100 dark:ring-white/10',
         className,
       )}
     >
@@ -33,9 +33,11 @@ export function CardPreview({ card, className }: { card: CardWithTags; className
         </div>
       )}
 
-      <p className={cn('break-words', card.isCompleted && 'text-gray-500 line-through')}>{card.title}</p>
+      <p className={cn('break-words', card.isCompleted && 'text-gray-500 line-through dark:text-gray-400')}>
+        {card.title}
+      </p>
 
-      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
         <PriorityBadge priority={card.priority} />
         {card.isCompleted && <CheckCircle2 className="size-3.5 text-green-600" aria-label="Đã hoàn thành" />}
         {card.dueDate && (
@@ -103,7 +105,7 @@ export const KanbanCard = memo(function KanbanCard({ card, listId, onOpen, dragD
         listeners?.onKeyDown?.(event);
       }}
     >
-      <CardPreview card={card} className={cn(!isDragging && 'hover:ring-gray-900/20')} />
+      <CardPreview card={card} className={cn(!isDragging && 'hover:ring-gray-900/20 dark:hover:ring-white/25')} />
     </div>
   );
 });

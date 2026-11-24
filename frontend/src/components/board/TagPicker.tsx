@@ -33,6 +33,17 @@ import type { Tag } from '@/types';
 
 const EMPTY_TAGS: Tag[] = [];
 
+// Popover nền gray-800 (tối) -> hover dùng gray-700
+const ICON_BUTTON_CLASS =
+  'rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100';
+const INPUT_BORDER_OK =
+  'border-gray-300 focus:border-blue-500 focus:ring-blue-500/30 dark:border-gray-600';
+const INPUT_BORDER_ERROR = 'border-red-400 focus:border-red-500 focus:ring-red-500/30';
+const INPUT_BASE =
+  'w-full rounded-md border bg-white px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500';
+const SECONDARY_BUTTON_CLASS =
+  'rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700';
+
 type View =
   | { mode: 'list' }
   | { mode: 'create' }
@@ -169,7 +180,7 @@ export function TagPicker({ cardId, anchorRef, onClose, onToggled }: TagPickerPr
       aria-labelledby={headingId}
       tabIndex={-1}
       onKeyDown={handleKeyDown}
-      className="absolute left-0 top-full z-20 mt-2 w-72 max-w-[calc(100vw-4rem)] rounded-lg bg-white p-3 shadow-xl ring-1 ring-gray-900/10 outline-none"
+      className="absolute left-0 top-full z-20 mt-2 w-72 max-w-[calc(100vw-4rem)] rounded-lg bg-white p-3 shadow-xl ring-1 ring-gray-900/10 outline-none dark:bg-gray-800 dark:ring-white/10"
     >
       <div className="mb-2 flex items-center gap-1">
         {mode !== 'list' ? (
@@ -177,21 +188,21 @@ export function TagPicker({ cardId, anchorRef, onClose, onToggled }: TagPickerPr
             type="button"
             onClick={backToList}
             aria-label="Quay lại danh sách nhãn"
-            className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            className={ICON_BUTTON_CLASS}
           >
             <ChevronLeft className="size-4" aria-hidden />
           </button>
         ) : (
           <span className="size-6" aria-hidden />
         )}
-        <h4 id={headingId} className="flex-1 text-center text-sm font-semibold text-gray-700">
+        <h4 id={headingId} className="flex-1 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">
           {title}
         </h4>
         <button
           type="button"
           onClick={onClose}
           aria-label="Đóng"
-          className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+          className={ICON_BUTTON_CLASS}
         >
           <X className="size-4" aria-hidden />
         </button>
@@ -234,12 +245,12 @@ function TagList({
   return (
     <div className="flex flex-col gap-2">
       {tags.length === 0 ? (
-        <p className="px-1 py-2 text-center text-sm text-gray-500">Board chưa có nhãn nào.</p>
+        <p className="px-1 py-2 text-center text-sm text-gray-500 dark:text-gray-400">Board chưa có nhãn nào.</p>
       ) : (
         <ul className="-mx-1 flex max-h-64 flex-col gap-1 overflow-y-auto px-1">
           {tags.map((tag) => (
             <li key={tag.id} className="flex items-center gap-1">
-              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-1 py-1 hover:bg-gray-100">
+              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-1 py-1 hover:bg-gray-100 dark:hover:bg-gray-700">
                 <input
                   type="checkbox"
                   checked={selectedIds.has(tag.id)}
@@ -253,7 +264,7 @@ function TagList({
                 onClick={() => onEdit(tag.id)}
                 aria-label={`Sửa nhãn ${tag.name}`}
                 title="Sửa nhãn"
-                className="shrink-0 rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                className="shrink-0 rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
               >
                 <Pencil className="size-3.5" aria-hidden />
               </button>
@@ -262,7 +273,7 @@ function TagList({
                 onClick={() => onDelete(tag.id)}
                 aria-label={`Xóa nhãn ${tag.name}`}
                 title="Xóa nhãn"
-                className="shrink-0 rounded-md p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                className="shrink-0 rounded-md p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-950/50 dark:hover:text-red-400"
               >
                 <Trash2 className="size-3.5" aria-hidden />
               </button>
@@ -273,7 +284,7 @@ function TagList({
       <button
         type="button"
         onClick={onCreate}
-        className="flex items-center justify-center gap-1.5 rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
+        className="flex items-center justify-center gap-1.5 rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
       >
         <Plus className="size-4" aria-hidden />
         Tạo nhãn mới
@@ -318,7 +329,7 @@ function TagForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <div className="flex justify-center rounded-md bg-gray-50 px-3 py-4">
+      <div className="flex justify-center rounded-md bg-gray-50 px-3 py-4 dark:bg-gray-900">
         <TagChip
           tag={{ name: trimmed || 'Xem trước', color: colorValid ? normalizedColor : '#DFE1E6' }}
           className="px-3 py-1.5 text-sm"
@@ -326,7 +337,7 @@ function TagForm({
       </div>
 
       <div>
-        <label htmlFor={nameId} className="mb-1 block text-xs font-semibold text-gray-600">
+        <label htmlFor={nameId} className="mb-1 block text-xs font-semibold text-gray-600 dark:text-gray-400">
           Tên nhãn
         </label>
         <input
@@ -337,22 +348,17 @@ function TagForm({
           maxLength={TAG_NAME_MAX}
           placeholder="Ví dụ: Ưu tiên cao"
           aria-invalid={duplicate ? true : undefined}
-          className={cn(
-            'w-full rounded-md border bg-white px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:ring-2',
-            duplicate
-              ? 'border-red-400 focus:border-red-500 focus:ring-red-500/30'
-              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500/30',
-          )}
+          className={cn(INPUT_BASE, duplicate ? INPUT_BORDER_ERROR : INPUT_BORDER_OK)}
         />
         {duplicate && (
-          <p role="alert" className="mt-1 text-xs text-red-600">
+          <p role="alert" className="mt-1 text-xs text-red-600 dark:text-red-400">
             Nhãn “{duplicate.name}” đã tồn tại trong board.
           </p>
         )}
       </div>
 
       <fieldset>
-        <legend className="mb-1 text-xs font-semibold text-gray-600">Màu</legend>
+        <legend className="mb-1 text-xs font-semibold text-gray-600 dark:text-gray-400">Màu</legend>
         <div className="grid grid-cols-5 gap-1.5">
           {TAG_COLOR_PRESETS.map((preset) => {
             const selected = normalizedColor === preset.color;
@@ -365,8 +371,8 @@ function TagForm({
                 aria-pressed={selected}
                 title={preset.label}
                 className={cn(
-                  'flex h-8 items-center justify-center rounded-md ring-offset-1 hover:opacity-90',
-                  selected && 'ring-2 ring-blue-600',
+                  'flex h-8 items-center justify-center rounded-md ring-offset-1 hover:opacity-90 dark:ring-offset-gray-800',
+                  selected && 'ring-2 ring-blue-600 dark:ring-blue-400',
                 )}
                 style={{ backgroundColor: preset.color, color: readableTextColor(preset.color) }}
               >
@@ -383,7 +389,7 @@ function TagForm({
             onChange={(event) => setColor(event.target.value.toUpperCase())}
             aria-label="Chọn màu tùy chỉnh"
             title="Chọn màu tùy chỉnh"
-            className="h-8 w-10 shrink-0 cursor-pointer rounded border border-gray-300 bg-white p-0.5"
+            className="h-8 w-10 shrink-0 cursor-pointer rounded border border-gray-300 bg-white p-0.5 dark:border-gray-600 dark:bg-gray-900"
           />
           <label htmlFor={hexId} className="sr-only">
             Mã màu hex
@@ -396,15 +402,12 @@ function TagForm({
             spellCheck={false}
             placeholder="#61BD4F"
             aria-invalid={colorValid ? undefined : true}
-            className={cn(
-              'w-full rounded-md border bg-white px-2.5 py-1.5 font-mono text-sm uppercase text-gray-900 outline-none focus:ring-2',
-              colorValid
-                ? 'border-gray-300 focus:border-blue-500 focus:ring-blue-500/30'
-                : 'border-red-400 focus:border-red-500 focus:ring-red-500/30',
-            )}
+            className={cn(INPUT_BASE, 'font-mono uppercase', colorValid ? INPUT_BORDER_OK : INPUT_BORDER_ERROR)}
           />
         </div>
-        {!colorValid && <p className="mt-1 text-xs text-red-600">Mã màu phải có dạng #RGB hoặc #RRGGBB.</p>}
+        {!colorValid && (
+          <p className="mt-1 text-xs text-red-600 dark:text-red-400">Mã màu phải có dạng #RGB hoặc #RRGGBB.</p>
+        )}
       </fieldset>
 
       <div className="flex items-center gap-2">
@@ -415,11 +418,7 @@ function TagForm({
         >
           {submitLabel}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
-        >
+        <button type="button" onClick={onCancel} className={SECONDARY_BUTTON_CLASS}>
           Hủy
         </button>
       </div>
@@ -450,7 +449,7 @@ function DeleteConfirm({
       <div className="flex justify-center">
         <TagChip tag={tag} className="px-3 py-1.5 text-sm" />
       </div>
-      <p className="text-sm text-gray-700">
+      <p className="text-sm text-gray-700 dark:text-gray-300">
         Nhãn sẽ bị xóa khỏi board
         {usage > 0 && (
           <>
@@ -469,11 +468,7 @@ function DeleteConfirm({
         >
           Xóa nhãn
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
-        >
+        <button type="button" onClick={onCancel} className={SECONDARY_BUTTON_CLASS}>
           Hủy
         </button>
       </div>

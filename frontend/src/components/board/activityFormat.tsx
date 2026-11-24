@@ -108,7 +108,7 @@ const BOARD_FIELD_LABELS: Record<string, string> = {
 // ============================================================
 
 function Quote({ children }: { children: ReactNode }) {
-  return <span className="font-medium text-gray-900">“{children}”</span>;
+  return <span className="font-medium text-gray-900 dark:text-gray-100">“{children}”</span>;
 }
 
 /** Tên nhãn trong lịch sử: chip đúng màu lúc ghi log, thiếu màu -> trích dẫn thường */
@@ -453,8 +453,12 @@ export function ActivityEntry({
     <>
       <span className="mt-1 flex size-4 shrink-0 items-center justify-center">{activityIcon(activity.action)}</span>
       <span className="flex min-w-0 flex-col">
-        <span className="break-words text-gray-700">{describeActivity(activity, scope)}</span>
-        <time dateTime={activity.createdAt} title={formatDateTime(activity.createdAt)} className="text-xs text-gray-500">
+        <span className="break-words text-gray-700 dark:text-gray-300">{describeActivity(activity, scope)}</span>
+        <time
+          dateTime={activity.createdAt}
+          title={formatDateTime(activity.createdAt)}
+          className="text-xs text-gray-500 dark:text-gray-400"
+        >
           {formatRelativeTime(activity.createdAt, now)}
         </time>
       </span>

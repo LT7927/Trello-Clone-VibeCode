@@ -56,7 +56,7 @@ export function CreateBoardForm({ variant = 'tile', className }: CreateBoardForm
         className={cn(
           variant === 'cta'
             ? 'inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700'
-            : 'flex h-28 w-full items-center justify-center gap-2 rounded-xl bg-gray-200 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-300',
+            : 'flex h-28 w-full items-center justify-center gap-2 rounded-xl bg-gray-200 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
           className,
         )}
       >
@@ -70,12 +70,12 @@ export function CreateBoardForm({ variant = 'tile', className }: CreateBoardForm
     <form
       onSubmit={handleSubmit}
       className={cn(
-        'flex w-full flex-col gap-2 rounded-xl bg-white p-3 text-left shadow-sm ring-1 ring-gray-900/10',
+        'flex w-full flex-col gap-2 rounded-xl bg-white p-3 text-left shadow-sm ring-1 ring-gray-900/10 dark:bg-gray-900 dark:ring-white/10',
         variant === 'cta' && 'max-w-sm',
         className,
       )}
     >
-      <label htmlFor="new-board-title" className="text-xs font-semibold text-gray-600">
+      <label htmlFor="new-board-title" className="text-xs font-semibold text-gray-600 dark:text-gray-400">
         Tiêu đề board
       </label>
       <input
@@ -87,10 +87,10 @@ export function CreateBoardForm({ variant = 'tile', className }: CreateBoardForm
         disabled={isSubmitting}
         maxLength={255}
         placeholder="Ví dụ: Dự án Website"
-        className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 disabled:bg-gray-50"
+        className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 disabled:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500 dark:disabled:bg-gray-800/60"
       />
       {error && (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-xs text-red-600 dark:text-red-400">
           {error}
         </p>
       )}
@@ -108,7 +108,7 @@ export function CreateBoardForm({ variant = 'tile', className }: CreateBoardForm
           onClick={close}
           disabled={isSubmitting}
           aria-label="Huỷ"
-          className="rounded-md p-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-50"
+          className="rounded-md p-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
         >
           <X className="size-4" aria-hidden />
         </button>

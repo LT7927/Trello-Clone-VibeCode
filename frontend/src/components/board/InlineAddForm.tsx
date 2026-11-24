@@ -43,7 +43,7 @@ export function InlineAddForm({ label, placeholder, submitLabel, onSubmit, class
         type="button"
         onClick={() => setIsOpen(true)}
         className={cn(
-          'flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-300/60 hover:text-gray-900',
+          'flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-300/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100',
           className,
         )}
       >
@@ -62,7 +62,7 @@ export function InlineAddForm({ label, placeholder, submitLabel, onSubmit, class
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         maxLength={255}
-        className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+        className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
       />
       <div className="flex items-center gap-1">
         <button
@@ -76,7 +76,7 @@ export function InlineAddForm({ label, placeholder, submitLabel, onSubmit, class
           type="button"
           onClick={close}
           aria-label="Huỷ"
-          className="rounded-md p-1.5 text-gray-600 hover:bg-gray-300/60 hover:text-gray-900"
+          className="rounded-md p-1.5 text-gray-600 hover:bg-gray-300/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
         >
           <X className="size-4" aria-hidden />
         </button>

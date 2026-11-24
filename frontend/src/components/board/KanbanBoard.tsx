@@ -330,13 +330,13 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
   if (!board) {
     if (status === 'error') {
       return (
-        <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-gray-100 p-4 text-center">
+        <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-gray-100 p-4 text-center dark:bg-gray-950">
           <AlertCircle className="size-8 text-red-500" aria-hidden />
-          <p className="text-sm text-gray-700">{error ?? 'Không thể tải board'}</p>
+          <p className="text-sm text-gray-700 dark:text-gray-300">{error ?? 'Không thể tải board'}</p>
           <div className="flex gap-2">
             <Link
               href="/"
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               Về trang chủ
             </Link>
@@ -363,7 +363,7 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
 
   return (
     <div
-      className={cn('flex h-dvh flex-col transition-colors', !boardColor && 'bg-gray-100')}
+      className={cn('flex h-dvh flex-col transition-colors', !boardColor && 'bg-gray-100 dark:bg-gray-950')}
       style={boardColor ? { backgroundColor: boardColor } : undefined}
     >
       <BoardHeader
@@ -379,17 +379,17 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
       {isFiltering && (
         <div
           role="status"
-          className="mx-4 mt-2 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-blue-50 px-3 py-1.5 text-sm text-blue-800 ring-1 ring-blue-200"
+          className="mx-4 mt-2 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-blue-50 px-3 py-1.5 text-sm text-blue-800 ring-1 ring-blue-200 dark:bg-blue-950/80 dark:text-blue-100 dark:ring-blue-800"
         >
           <Filter className="size-4 shrink-0" aria-hidden />
           <span>
             Đang lọc: hiển thị <strong className="font-semibold">{matchedCardCount}</strong> / {totalCardCount} thẻ.
           </span>
-          <span className="text-blue-700/80">Tắt bộ lọc để kéo thả thẻ.</span>
+          <span className="text-blue-700/80 dark:text-blue-200/80">Tắt bộ lọc để kéo thả thẻ.</span>
           <button
             type="button"
             onClick={clearFilter}
-            className="ml-auto rounded px-2 py-0.5 font-medium hover:bg-blue-100"
+            className="ml-auto rounded px-2 py-0.5 font-medium hover:bg-blue-100 dark:hover:bg-blue-900/60"
           >
             Xóa bộ lọc
           </button>
@@ -399,11 +399,16 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
       {actionError && (
         <div
           role="alert"
-          className="mx-4 my-2 flex shrink-0 items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200"
+          className="mx-4 my-2 flex shrink-0 items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200 dark:bg-red-950/80 dark:text-red-200 dark:ring-red-800"
         >
           <AlertCircle className="size-4 shrink-0" aria-hidden />
           <span className="flex-1">{actionError}</span>
-          <button type="button" onClick={clearActionError} aria-label="Đóng thông báo" className="rounded p-0.5 hover:bg-red-100">
+          <button
+            type="button"
+            onClick={clearActionError}
+            aria-label="Đóng thông báo"
+            className="rounded p-0.5 hover:bg-red-100 dark:hover:bg-red-900/60"
+          >
             <X className="size-4" aria-hidden />
           </button>
         </div>
@@ -434,8 +439,13 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
             ))}
           </SortableContext>
 
-          {/* Trên nền màu: nền trắng mờ để chữ xám của form vẫn đủ tương phản */}
-          <div className={cn('w-72 shrink-0 rounded-xl p-2', boardColor ? 'bg-white/75' : 'bg-gray-200/70')}>
+          {/* Trên nền màu: nền trắng (tối: xám đậm) mờ để chữ của form vẫn đủ tương phản */}
+          <div
+            className={cn(
+              'w-72 shrink-0 rounded-xl p-2',
+              boardColor ? 'bg-white/75 dark:bg-gray-900/80' : 'bg-gray-200/70 dark:bg-gray-900/70',
+            )}
+          >
             <InlineAddForm
               label="Thêm danh sách"
               placeholder="Nhập tiêu đề danh sách..."

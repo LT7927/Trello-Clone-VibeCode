@@ -1,8 +1,22 @@
 @import "tailwindcss";
 
+/*
+ * Dark mode theo class: <html class="dark"> (do ThemeProvider + inline script trong layout gắn),
+ * thay vì mặc định theo prefers-color-scheme của Tailwind v4.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
+  --background: #f3f4f6; /* gray-100 */
   --foreground: #171717;
+  color-scheme: light;
+}
+
+:root.dark {
+  --background: #030712; /* gray-950 */
+  --foreground: #ededed;
+  /* Thanh cuộn, <input type="date">, checkbox... của trình duyệt cũng chuyển tối */
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -31,13 +45,6 @@
     to {
       opacity: 1;
     }
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
   }
 }
 

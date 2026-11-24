@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { THEME_INIT_SCRIPT } from "@/components/theme/themeScript";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,11 +24,20 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // suppressHydrationWarning: inline script gắn class "dark" + style color-scheme lên <html>
+    // trước khi React hydrate -> khác HTML server là có chủ đích (chỉ áp cho chính thẻ này).
     <html
       lang="vi"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head>
+        {/* Chạy đồng bộ trước khi vẽ trang -> không nháy giao diện sáng khi đang dùng chế độ tối */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className="min-h-full flex flex-col">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }
